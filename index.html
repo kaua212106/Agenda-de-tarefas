@@ -122,14 +122,37 @@
             iniciarChecagem();
         };
 
+        // ✅ FUNÇÃO AJUSTADA: esconde aviso se já estiver permitido
         async function pedirPermissao() {
+            const aviso = document.getElementById('avisoPermissao');
+
             if (!('Notification' in window)) {
-                document.getElementById('avisoPermissao').style.display = 'block';
+                aviso.textContent = "Seu navegador não suporta notificações 😔";
+                aviso.style.display = 'block';
                 return;
             }
-            if (Notification.permission === 'granted') return;
-            const ok = await Notification.requestPermission();
-            if (ok !== 'granted') document.getElementById('avisoPermissao').style.display = 'block';
+
+            // Se já autorizou → some com o aviso de vez
+            if (Notification.permission === "granted") {
+                aviso.style.display = 'none';
+                return;
+            }
+
+            // Se negou → mostra aviso de permissão negada
+            if (Notification.permission === "denied") {
+                aviso.textContent = "Permissão de notificações negada 😔";
+                aviso.style.display = 'block';
+                return;
+            }
+
+            // Ainda não decidiu → pede permissão
+            const resultado = await Notification.requestPermission();
+            if (resultado === "granted") {
+                aviso.style.display = 'none'; // autorizou → esconde
+            } else {
+                aviso.textContent = "Sem permissão para lembretes 😔";
+                aviso.style.display = 'block';
+            }
         }
 
         function adicionarTarefa() {
@@ -226,7 +249,7 @@
             if(t.tipo){
                 linhaTipo = `<div class="tipo">${t.tipo}</div>`;
             } else {
-                linhaTipo = `<div class="tipo sem-tipo">Não selecionado</div>`; <!-- ✅ Ajustei o texto para combinar -->
+                linhaTipo = `<div class="tipo sem-tipo">Não selecionado</div>`;
             }
 
             return `
