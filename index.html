@@ -18,12 +18,11 @@
         body {
             background: linear-gradient(135deg, #667eea, #764ba2);
             min-height: 100vh;
-            padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
+            padding:20px;
+            max-width:600px;
+            margin:0 auto;
         }
-        h1 {color: white; text-align: center; margin-bottom:25px; font-size:24px;}
-        .aviso {background:#fef3c7; color:#92400e; padding:12px; border-radius:10px; margin-bottom:20px; text-align:center; display:block; font-weight:500;}
+        h1 {color:white; text-align:center; margin-bottom:25px; font-size:24px;}
         .card {background:white; border-radius:15px; padding:20px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.15);}
         
         label {
@@ -46,7 +45,7 @@
         .btn-add {background:#667eea; color:white;}
         .btn-del {background:#e53e3e; color:white;}
         .btn-foto {background:#38a169; color:white; margin-bottom:10px;}
-        .btn-apagar-foto {background:#e53e3e; color:white; display:none;} /* só aparece quando tem foto */
+        .btn-apagar-foto {background:#e53e3e; color:white; display:none;}
         .tarefa {background:#f8fafc; border-radius:10px; padding:15px; margin:10px 0; display:flex; align-items:flex-start; gap:12px; border-left:4px solid #667eea;}
         .tarefa.concluida {border-left-color:#2f855a; background:#f0fff4;}
         .tarefa.concluida .nome {text-decoration:line-through; color:#555;}
@@ -54,9 +53,9 @@
         .tipo {font-size:14px; color:#667eea; font-weight:bold; margin-bottom:3px;}
         .sem-tipo {color:#888; font-style:italic;}
         .data, .hora-lembrete, .data-conclusao {font-size:13px; margin-top:4px; display:block;}
-        .data {color:#666;}
-        .hora-lembrete {color:#667eea;}
-        .data-conclusao {color:#2f855a;}
+        .data, .hora-lembrete {color:#666;}
+        .hora-vazia {color:#999; font-style:italic;}
+        .data-conclusao {color:#2f855a; font-weight:500;}
         input[type="checkbox"] {width:22px; height:22px; margin-top:3px; cursor:pointer; accent-color:#2f855a;}
         .info {flex:1;}
         .cabecalho-concluidas {display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:5px 0; color:#2f855a; font-weight:bold; font-size:18px;}
@@ -92,7 +91,6 @@
 <body>
 
     <h1>📚 Minhas Tarefas escolares</h1>
-    <div class="aviso" id="avisoPermissao">Permita notificações para receber os lembretes! 😊</div>
 
     <div class="card">
         <label for="tipoTarefa">📌 Tipo de atividade:</label>
@@ -112,10 +110,10 @@
         <label for="dataTarefa">📅 Dia da entrega:</label>
         <input type="date" id="dataTarefa">
 
-        <label for="horaLembrete">🕒 Horário do lembrete (um dia antes):</label>
-        <input type="time" id="horaLembrete" placeholder="Ex: 08:00">
+        <label for="horaLembrete">🕒 Horário da entrega (opcional):</label>
+        <input type="time" id="horaLembrete" placeholder="Deixe vazio se não quiser">
 
-        <button class="btn-add" onclick="adicionarTarefa()">➕ Adicionar</button>
+        <button class="btn-add" onclick="adicionarTarefa()">➕ Adicionar Tarefa</button>
     </div>
 
     <div class="card">
@@ -134,7 +132,6 @@
         </div>
     </div>
 
-    <!-- ✅ SEÇÃO DO HORÁRIO COM BOTÃO DE EXCLUIR FOTO -->
     <div class="card">
         <h3 class="horario-titulo">📅 Meu Horário de Aulas</h3>
         
@@ -143,19 +140,14 @@
         
         <input type="file" id="escolherFoto" accept="image/*" style="display:none;">
         <button id="botaoFoto" class="btn-foto" onclick="document.getElementById('escolherFoto').click()">📷 Selecionar minha foto do horário</button>
-        
-        <!-- ✅ NOVO BOTÃO DE EXCLUIR -->
         <button id="botaoApagarFoto" class="btn-apagar-foto" onclick="apagarFoto()">🗑️ Excluir foto do horário</button>
     </div>
 
     <script>
         let tarefas = JSON.parse(localStorage.getItem('tarefasApp')) || [];
-        let verificador;
 
-        window.onload = async () => {
-            await pedirPermissao();
+        window.onload = () => {
             atualizarTelas();
-            iniciarChecagem();
             carregarFotoSalva();
         };
 
@@ -175,7 +167,7 @@
                 imgHorario.style.display = 'block';
                 msgSemFoto.style.display = 'none';
                 botaoFoto.textContent = "📷 Trocar minha foto do horário";
-                botaoApagarFoto.style.display = 'block'; // mostra o excluir
+                botaoApagarFoto.style.display = 'block';
                 localStorage.setItem('fotoHorarioAulas', evento.target.result);
             }
             leitor.readAsDataURL(arquivo);
@@ -188,50 +180,19 @@
                 imgHorario.style.display = 'block';
                 msgSemFoto.style.display = 'none';
                 botaoFoto.textContent = "📷 Trocar minha foto do horário";
-                botaoApagarFoto.style.display = 'block'; // já mostra ao abrir
+                botaoApagarFoto.style.display = 'block';
             }
         }
 
-        // ✅ FUNÇÃO DE EXCLUIR: apaga tudo e volta ao estado inicial
         function apagarFoto() {
             if (confirm('Tem certeza que quer excluir a foto do horário?')) {
-                localStorage.removeItem('fotoHorarioAulas'); // apaga da memória
+                localStorage.removeItem('fotoHorarioAulas');
                 imgHorario.src = '';
                 imgHorario.style.display = 'none';
                 msgSemFoto.style.display = 'block';
                 botaoFoto.textContent = "📷 Selecionar minha foto do horário";
-                botaoApagarFoto.style.display = 'none'; // esconde o botão
-                inputFoto.value = ''; // limpa o input
-            }
-        }
-
-        // RESTO DO CÓDIGO IGUAL E FUNCIONANDO
-        async function pedirPermissao() {
-            const aviso = document.getElementById('avisoPermissao');
-
-            if (!('Notification' in window)) {
-                aviso.textContent = "Seu navegador não suporta notificações 😔";
-                aviso.style.display = 'block';
-                return;
-            }
-
-            if (Notification.permission === "granted") {
-                aviso.style.display = 'none';
-                return;
-            }
-
-            if (Notification.permission === "denied") {
-                aviso.textContent = "Permissão de notificações negada 😔";
-                aviso.style.display = 'block';
-                return;
-            }
-
-            const resultado = await Notification.requestPermission();
-            if (resultado === "granted") {
-                aviso.style.display = 'none';
-            } else {
-                aviso.textContent = "Sem permissão para lembretes 😔";
-                aviso.style.display = 'block';
+                botaoApagarFoto.style.display = 'none';
+                inputFoto.value = '';
             }
         }
 
@@ -239,11 +200,11 @@
             const tipo = document.getElementById('tipoTarefa').value.trim();
             const materia = document.getElementById('nomeMateria').value.trim();
             const data = document.getElementById('dataTarefa').value;
-            const hora = document.getElementById('horaLembrete').value || '08:00';
+            const hora = document.getElementById('horaLembrete').value.trim();
             
             if (!materia || !data) return alert('Por favor, preencha o nome da matéria e o dia da entrega!');
 
-            tarefas.push({ tipo, materia, data, horaLembrete: hora, concluida: false, lembreteEnviado: false, dataConclusao: null });
+            tarefas.push({ tipo, materia, data, hora, concluida: false, dataConclusao: null, ordemConclusao: null });
             salvar();
             atualizarTelas();
             
@@ -253,49 +214,21 @@
             document.getElementById('tipoTarefa').selectedIndex = 0;
         }
 
-        function verificarLembretes() {
-            const agora = new Date();
-            const hh = agora.getHours();
-            const mm = agora.getMinutes();
+        // ✅ AGORA GUARDA UM NÚMERO DE ORDEM PARA NÃO ERRAR MAIS!
+        function mudarStatus(indice) {
+            const tarefa = tarefas[indice];
+            tarefa.concluida = !tarefa.concluida;
 
-            tarefas.forEach(t => {
-                if (t.concluida || t.lembreteEnviado) return;
-
-                const entrega = new Date(t.data + 'T12:00:00');
-                const umDiaAntes = new Date(entrega);
-                umDiaAntes.setDate(entrega.getDate() - 1);
-
-                const [horaL, minL] = t.horaLembrete.split(':').map(Number);
-
-                if (agora.toDateString() === umDiaAntes.toDateString() &&
-                    (hh > horaL || (hh === horaL && mm >= minL))) {
-                    enviarAviso(t);
-                    t.lembreteEnviado = true;
-                    salvar();
-                }
-            });
-        }
-
-        function enviarAviso(tarefa) {
-            if (Notification.permission === 'granted') {
-                let texto = tarefa.tipo ? `${tarefa.tipo} de ${tarefa.materia}` : tarefa.materia;
-                new Notification("⏰ Lembrete Programado!", {
-                    body: `Hoje às ${tarefa.horaLembrete} → Amanhã: ${texto} 📝`,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/3201/3201355.png'
-                });
+            if (tarefa.concluida) {
+                tarefa.dataConclusao = new Date().toLocaleString('pt-BR'); // guarda DATA+HORA COMPLETA
+                tarefa.ordemConclusao = Date.now(); // número único do momento exato
+            } else {
+                tarefa.dataConclusao = null;
+                tarefa.ordemConclusao = null;
             }
-        }
 
-        function iniciarChecagem() {
-            verificarLembretes();
-            verificador = setInterval(verificarLembretes, 30000);
-        }
-
-        function mudarStatus(i) {
-            tarefas[i].concluida = !tarefas[i].concluida;
-            if (tarefas[i].concluida) tarefas[i].dataConclusao = new Date().toISOString();
-            else tarefas[i].lembreteEnviado = false;
-            salvar(); atualizarTelas();
+            salvar();
+            atualizarTelas();
         }
 
         function toggleConcluidas() {
@@ -306,31 +239,48 @@
         function apagarTodasConcluidas() {
             if (confirm('Apagar todas as tarefas concluídas?')) {
                 tarefas = tarefas.filter(t => !t.concluida);
-                salvar(); atualizarTelas();
+                salvar(); 
+                atualizarTelas();
             }
         }
 
+        // ✅ ORDENAÇÃO INFALÍVEL: usa o número do momento da conclusão
         function atualizarTelas() {
-            const pendentes = tarefas.filter(t => !t.concluida).sort((a,b) => new Date(a.data) - new Date(b.data));
-            const concluidas = tarefas.filter(t => t.concluida).sort((a,b) => new Date(b.dataConclusao) - new Date(a.dataConclusao));
+            const pendentes = tarefas.filter(t => !t.concluida).sort((a, b) => new Date(a.data) - new Date(b.data));
+            
+            // MAIS RECENTE NO TOPO SEMPRE!
+            const concluidas = tarefas.filter(t => t.concluida).sort((a, b) => b.ordemConclusao - a.ordemConclusao);
 
-            document.getElementById('listaPendentes').innerHTML = pendentes.length ? '' : `<div class="vazio">Nenhuma tarefa pendente 😊</div>`;
-            pendentes.forEach((t,i) => document.getElementById('listaPendentes').innerHTML += criarHtml(t, tarefas.indexOf(t)));
+            const listaPendEl = document.getElementById('listaPendentes');
+            listaPendEl.innerHTML = '';
+            if (pendentes.length === 0) {
+                listaPendEl.innerHTML = `<div class="vazio">Nenhuma tarefa pendente 😊</div>`;
+            } else {
+                pendentes.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaPendEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
 
-            document.getElementById('listaConcluidas').innerHTML = concluidas.length ? '' : `<div class="vazio">Nenhuma tarefa concluída ainda</div>`;
-            concluidas.forEach((t,i) => document.getElementById('listaConcluidas').innerHTML += criarHtml(t, tarefas.indexOf(t)));
+            const listaConcEl = document.getElementById('listaConcluidas');
+            listaConcEl.innerHTML = '';
+            if (concluidas.length === 0) {
+                listaConcEl.innerHTML = `<div class="vazio">Nenhuma tarefa concluída ainda</div>`;
+            } else {
+                concluidas.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaConcEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
         }
 
         function criarHtml(t, ind) {
             let extra = '';
-            if (t.concluida) extra = `<div class="data-conclusao">✅ Concluída em: ${new Date(t.dataConclusao).toLocaleDateString('pt-BR')}</div>`;
+            if (t.concluida) extra = `<div class="data-conclusao">✅ Concluída em: ${t.dataConclusao}</div>`;
             
-            let linhaTipo = '';
-            if(t.tipo){
-                linhaTipo = `<div class="tipo">${t.tipo}</div>`;
-            } else {
-                linhaTipo = `<div class="tipo sem-tipo">Não selecionado</div>`;
-            }
+            let linhaTipo = t.tipo ? `<div class="tipo">${t.tipo}</div>` : `<div class="tipo sem-tipo">Não selecionado</div>`;
+            
+            let textoHora = t.hora ? `🕒 Horário: ${t.hora}` : `<span class="hora-vazia">🕒 Horário: Não definido</span>`;
 
             return `
                 <div class="tarefa ${t.concluida?'concluida':''}">
@@ -338,8 +288,8 @@
                     <div class="info">
                         ${linhaTipo}
                         <div class="nome">${t.materia}</div>
-                        <div class="data">📅 Dia de entrega: ${new Date(t.data+'T12:00:00').toLocaleDateString('pt-BR')}</div>
-                        <div class="hora-lembrete">🕒 Lembrete: ${t.horaLembrete}</div>
+                        <div class="data">📅 Dia da entrega: ${new Date(t.data+'T12:00:00').toLocaleDateString('pt-BR')}</div>
+                        <div class="hora-lembrete">${textoHora}</div>
                         ${extra}
                     </div>
                 </div>
