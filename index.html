@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+2<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -162,15 +162,27 @@
 
         // ✅ FUNÇÃO DE TESTE RÁPIDO
         function testarNotificacao() {
-            if (Notification.permission === "granted") {
-                new Notification("🔔 Teste de Notificação", {
-                    body: "Se chegou, está funcionando perfeitamente! ✅",
-                    icon: 'https://cdn-icons-png.flaticon.com/512/3201/3201355.png'
-                });
-            } else {
-                alert("Permissão ainda não concedida! Verifique nas configurações.");
-            }
+    if (!('Notification' in window)) {
+        alert("❌ Seu navegador NÃO suporta notificações!");
+        return;
+    }
+    alert("📝 Status da permissão: " + Notification.permission); // mostra granted/denied/default
+
+    if (Notification.permission === "granted") {
+        new Notification("🔔 Teste de Notificação", {
+            body: "Se chegou, está funcionando perfeitamente! ✅",
+            icon: 'https://cdn-icons-png.flaticon.com/512/3201/3201355.png'
+        });
+    } else if (Notification.permission === "denied") {
+        alert("🚫 Permissão NEGADA! Vá nas configurações do navegador e libere.");
+    } else {
+        Notification.requestPermission().then(res => {
+            alert("Resultado da solicitação: " + res);
+            if(res==="granted") testarNotificacao();
+        });
+    }
         }
+        
 
         const inputFoto = document.getElementById('escolherFoto');
         const imgHorario = document.getElementById('fotoHorario');
