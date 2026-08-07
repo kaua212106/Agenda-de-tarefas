@@ -1,0 +1,15 @@
+{
+  "name": "Agenda de Tarefas Escolares",
+  "short_name": "Minhas Tarefas",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3201/3201355.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
