@@ -46,7 +46,8 @@
         .btn-add {background:#667eea; color:white;}
         .btn-del {background:#e53e3e; color:white;}
         .btn-foto {background:#38a169; color:white; margin-bottom:10px;}
-        .btn-apagar-foto {background:#e53e3e; color:white; display:none;} /* só aparece quando tem foto */
+        .btn-apagar-foto {background:#e53e3e; color:white; display:none;}
+        .btn-teste {background:#f59e0b; color:white; margin:10px 0;} /* botão de teste laranja */
         .tarefa {background:#f8fafc; border-radius:10px; padding:15px; margin:10px 0; display:flex; align-items:flex-start; gap:12px; border-left:4px solid #667eea;}
         .tarefa.concluida {border-left-color:#2f855a; background:#f0fff4;}
         .tarefa.concluida .nome {text-decoration:line-through; color:#555;}
@@ -94,6 +95,9 @@
     <h1>📚 Minhas Tarefas escolares</h1>
     <div class="aviso" id="avisoPermissao">Permita notificações para receber os lembretes! 😊</div>
 
+    <!-- ✅ BOTÃO DE TESTE PARA VER SE NOTIFICAÇÃO FUNCIONA -->
+    <button class="btn-teste" onclick="testarNotificacao()">🔔 Testar Notificação Agora</button>
+
     <div class="card">
         <label for="tipoTarefa">📌 Tipo de atividade:</label>
         <select id="tipoTarefa">
@@ -134,7 +138,6 @@
         </div>
     </div>
 
-    <!-- ✅ SEÇÃO DO HORÁRIO COM BOTÃO DE EXCLUIR FOTO -->
     <div class="card">
         <h3 class="horario-titulo">📅 Meu Horário de Aulas</h3>
         
@@ -143,8 +146,6 @@
         
         <input type="file" id="escolherFoto" accept="image/*" style="display:none;">
         <button id="botaoFoto" class="btn-foto" onclick="document.getElementById('escolherFoto').click()">📷 Selecionar minha foto do horário</button>
-        
-        <!-- ✅ NOVO BOTÃO DE EXCLUIR -->
         <button id="botaoApagarFoto" class="btn-apagar-foto" onclick="apagarFoto()">🗑️ Excluir foto do horário</button>
     </div>
 
@@ -158,6 +159,18 @@
             iniciarChecagem();
             carregarFotoSalva();
         };
+
+        // ✅ FUNÇÃO DE TESTE RÁPIDO
+        function testarNotificacao() {
+            if (Notification.permission === "granted") {
+                new Notification("🔔 Teste de Notificação", {
+                    body: "Se chegou, está funcionando perfeitamente! ✅",
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3201/3201355.png'
+                });
+            } else {
+                alert("Permissão ainda não concedida! Verifique nas configurações.");
+            }
+        }
 
         const inputFoto = document.getElementById('escolherFoto');
         const imgHorario = document.getElementById('fotoHorario');
@@ -175,7 +188,7 @@
                 imgHorario.style.display = 'block';
                 msgSemFoto.style.display = 'none';
                 botaoFoto.textContent = "📷 Trocar minha foto do horário";
-                botaoApagarFoto.style.display = 'block'; // mostra o excluir
+                botaoApagarFoto.style.display = 'block';
                 localStorage.setItem('fotoHorarioAulas', evento.target.result);
             }
             leitor.readAsDataURL(arquivo);
@@ -188,24 +201,22 @@
                 imgHorario.style.display = 'block';
                 msgSemFoto.style.display = 'none';
                 botaoFoto.textContent = "📷 Trocar minha foto do horário";
-                botaoApagarFoto.style.display = 'block'; // já mostra ao abrir
+                botaoApagarFoto.style.display = 'block';
             }
         }
 
-        // ✅ FUNÇÃO DE EXCLUIR: apaga tudo e volta ao estado inicial
         function apagarFoto() {
             if (confirm('Tem certeza que quer excluir a foto do horário?')) {
-                localStorage.removeItem('fotoHorarioAulas'); // apaga da memória
+                localStorage.removeItem('fotoHorarioAulas');
                 imgHorario.src = '';
                 imgHorario.style.display = 'none';
                 msgSemFoto.style.display = 'block';
                 botaoFoto.textContent = "📷 Selecionar minha foto do horário";
-                botaoApagarFoto.style.display = 'none'; // esconde o botão
-                inputFoto.value = ''; // limpa o input
+                botaoApagarFoto.style.display = 'none';
+                inputFoto.value = '';
             }
         }
 
-        // RESTO DO CÓDIGO IGUAL E FUNCIONANDO
         async function pedirPermissao() {
             const aviso = document.getElementById('avisoPermissao');
 
@@ -352,3 +363,4 @@
     </script>
 </body>
 </html>
+2
