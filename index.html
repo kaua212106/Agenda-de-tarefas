@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ✅ ESSENCIAL PARA FICAR COM TELA DE APP -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#667eea">
-    <!-- ✅ LINK DO MANIFEST NO LUGAR CERTO: NO HEAD -->
     <link rel="manifest" href="manifest.json">
     <title>Agenda de tarefas</title>
     <style>
@@ -47,6 +45,8 @@
         button {width:100%; padding:12px; border:none; border-radius:10px; font-size:16px; font-weight:bold; cursor:pointer; margin-top:15px;}
         .btn-add {background:#667eea; color:white;}
         .btn-del {background:#e53e3e; color:white;}
+        .btn-foto {background:#38a169; color:white; margin-bottom:10px;}
+        .btn-apagar-foto {background:#e53e3e; color:white; display:none;} /* só aparece quando tem foto */
         .tarefa {background:#f8fafc; border-radius:10px; padding:15px; margin:10px 0; display:flex; align-items:flex-start; gap:12px; border-left:4px solid #667eea;}
         .tarefa.concluida {border-left-color:#2f855a; background:#f0fff4;}
         .tarefa.concluida .nome {text-decoration:line-through; color:#555;}
@@ -65,6 +65,28 @@
         .seta {transition:transform 0.3s;}
         .cabecalho-concluidas.aberto .seta {transform:rotate(180deg);}
         .vazio {text-align:center; color:#999; padding:20px; font-style:italic;}
+
+        .horario-titulo {
+            color:#667eea;
+            font-size:18px;
+            font-weight:bold;
+            text-align:center;
+            margin-bottom:15px;
+        }
+        .imagem-horario {
+            width:100%;
+            border-radius:10px;
+            border:2px solid #667eea;
+            object-fit:contain;
+            display:none;
+            margin-bottom:15px;
+        }
+        .sem-foto {
+            text-align:center;
+            color:#888;
+            padding:20px;
+            font-style:italic;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +134,20 @@
         </div>
     </div>
 
+    <!-- ✅ SEÇÃO DO HORÁRIO COM BOTÃO DE EXCLUIR FOTO -->
+    <div class="card">
+        <h3 class="horario-titulo">📅 Meu Horário de Aulas</h3>
+        
+        <img id="fotoHorario" class="imagem-horario" alt="Seu horário de aulas aparecerá aqui">
+        <div id="mensagemSemFoto" class="sem-foto">Nenhuma foto adicionada ainda 😔<br>Clique no botão abaixo para colocar seu horário!</div>
+        
+        <input type="file" id="escolherFoto" accept="image/*" style="display:none;">
+        <button id="botaoFoto" class="btn-foto" onclick="document.getElementById('escolherFoto').click()">📷 Selecionar minha foto do horário</button>
+        
+        <!-- ✅ NOVO BOTÃO DE EXCLUIR -->
+        <button id="botaoApagarFoto" class="btn-apagar-foto" onclick="apagarFoto()">🗑️ Excluir foto do horário</button>
+    </div>
+
     <script>
         let tarefas = JSON.parse(localStorage.getItem('tarefasApp')) || [];
         let verificador;
@@ -120,9 +156,56 @@
             await pedirPermissao();
             atualizarTelas();
             iniciarChecagem();
+            carregarFotoSalva();
         };
 
-        // ✅ FUNÇÃO AJUSTADA: esconde aviso se já estiver permitido
+        const inputFoto = document.getElementById('escolherFoto');
+        const imgHorario = document.getElementById('fotoHorario');
+        const msgSemFoto = document.getElementById('mensagemSemFoto');
+        const botaoFoto = document.getElementById('botaoFoto');
+        const botaoApagarFoto = document.getElementById('botaoApagarFoto');
+
+        inputFoto.addEventListener('change', function(e) {
+            const arquivo = e.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = function(evento) {
+                imgHorario.src = evento.target.result;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block'; // mostra o excluir
+                localStorage.setItem('fotoHorarioAulas', evento.target.result);
+            }
+            leitor.readAsDataURL(arquivo);
+        });
+
+        function carregarFotoSalva() {
+            const fotoSalva = localStorage.getItem('fotoHorarioAulas');
+            if (fotoSalva) {
+                imgHorario.src = fotoSalva;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block'; // já mostra ao abrir
+            }
+        }
+
+        // ✅ FUNÇÃO DE EXCLUIR: apaga tudo e volta ao estado inicial
+        function apagarFoto() {
+            if (confirm('Tem certeza que quer excluir a foto do horário?')) {
+                localStorage.removeItem('fotoHorarioAulas'); // apaga da memória
+                imgHorario.src = '';
+                imgHorario.style.display = 'none';
+                msgSemFoto.style.display = 'block';
+                botaoFoto.textContent = "📷 Selecionar minha foto do horário";
+                botaoApagarFoto.style.display = 'none'; // esconde o botão
+                inputFoto.value = ''; // limpa o input
+            }
+        }
+
+        // RESTO DO CÓDIGO IGUAL E FUNCIONANDO
         async function pedirPermissao() {
             const aviso = document.getElementById('avisoPermissao');
 
@@ -132,23 +215,20 @@
                 return;
             }
 
-            // Se já autorizou → some com o aviso de vez
             if (Notification.permission === "granted") {
                 aviso.style.display = 'none';
                 return;
             }
 
-            // Se negou → mostra aviso de permissão negada
             if (Notification.permission === "denied") {
                 aviso.textContent = "Permissão de notificações negada 😔";
                 aviso.style.display = 'block';
                 return;
             }
 
-            // Ainda não decidiu → pede permissão
             const resultado = await Notification.requestPermission();
             if (resultado === "granted") {
-                aviso.style.display = 'none'; // autorizou → esconde
+                aviso.style.display = 'none';
             } else {
                 aviso.textContent = "Sem permissão para lembretes 😔";
                 aviso.style.display = 'block';
@@ -272,3 +352,4 @@
     </script>
 </body>
 </html>
+w
