@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <title>Agenda de tarefas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 100px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .barra-topo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        .botao-menu, .botao-mais {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .titulo-topo {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contadores {
+            display: flex;
+            gap: 12px;
+            margin: 10px 0 25px;
+            position: relative;
+            z-index: 1;
+        }
+        .contador {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            padding: 15px 5px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .contador.pend { color: #667eea; }
+        .contador.conc { color: #2f855a; }
+        .contador.porc { color: #f59e0b; }
+        .contador span {
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 8px;
+            font-weight: normal;
+            color: #000;
+            font-size: 18px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            font-size: 17px;
+            background: #eee;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-salvar {
+            background: #667eea;
+            color: white;
+        }
+        .btn-fechar {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-del {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-foto {
+            background: #38a169;
+            color: white;
+            margin-bottom: 10px;
+        }
+        .btn-apagar-foto {
+            background: #e53e3e;
+            color: white;
+            display: none;
+        }
+
+        /* ✅ FAIXA LATERAL COM CORES DE URGÊNCIA */
+        .tarefa {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-left: 5px solid; /* espessura igual da foto */
+        }
+        /* Cores por urgência */
+        .tarefa.urg-alta { border-color: #dc2626; } /* vermelho */
+        .tarefa.urg-media { border-color: #f59e0b; } /* amarelo */
+        .tarefa.urg-baixa { border-color: #10b981; } /* verde */
+        .tarefa.urg-não-definida { border-color: #9ca3af; } /* cinza */
+
+        .tarefa.concluida {
+            opacity: 0.7;
+        }
+        .tarefa.concluida .nome {
+            text-decoration: line-through;
+            color: #555;
+        }
+        .nome {
+            font-weight: bold;
+            font-size: 16px;
+            color: #222;
+        }
+        .tipo {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .sem-tipo {
+            color: #888;
+            font-style: italic;
+        }
+        .data, .hora-lembrete, .data-conclusao {
+            font-size: 13px;
+            margin-top: 4px;
+            display: block;
+        }
+        .data, .hora-lembrete {
+            color: #666;
+        }
+        .hora-vazia {
+            color: #999;
+            font-style: italic;
+        }
+        .data-conclusao {
+            color: #2f855a;
+            font-weight: 500;
+        }
+        input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            margin-top: 3px;
+            cursor: pointer;
+            accent-color: #2f855a;
+        }
+        .info {
+            flex: 1;
+        }
+
+        .cabecalho-concluidas {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 5px 0;
+            color: #2f855a;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .conteudo-concluidas {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+        .conteudo-concluidas.aberto {
+            max-height: 2000px;
+        }
+        .seta {
+            transition: transform 0.3s;
+            font-size: 22px;
+        }
+        .cabecalho-concluidas.aberto .seta {
+            transform: rotate(180deg);
+        }
+
+        .vazio {
+            text-align: center;
+            color: #999;
+            padding: 30px 20px;
+            font-style: italic;
+            font-size: 17px;
+        }
+
+        .horario-titulo {
+            color: #667eea;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .imagem-horario {
+            width: 100%;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            object-fit: contain;
+            display: none;
+            margin-bottom: 15px;
+        }
+        .sem-foto {
+            text-align: center;
+            color: #999;
+            padding: 10px 20px 30px;
+            font-style: italic;
+            font-size: 17px;
+            line-height: 1.5;
+        }
+        .btn-foto {
+            background: #38a169;
+            color: white;
+            font-size: 17px;
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .modal-nova-tarefa {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-nova-tarefa.aberto {
+            display: flex;
+        }
+        .conteudo-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 25px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        .conteudo-modal h2 {
+            font-size: 26px;
+            color: #000;
+            margin-bottom: 20px;
+        }
+/* ==============================
+   MENU FLUTUANTE
+   ============================== */
+
+.modal-menu {
+    display: none;
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.60);
+
+    z-index: 50;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 15px;
+}
+
+.modal-menu.aberto {
+    display: flex;
+}
+
+.conteudo-menu {
+    width: 100%;
+    max-width: 635px;
+
+    background: white;
+    border-radius: 25px;
+
+    /* MENOS ESPAÇO INTERNO */
+    padding: 28px 25px;
+
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+}
+
+/* TÍTULO */
+
+.titulo-menu {
+    font-size: 28px;
+    font-weight: normal;
+    color: #111;
+
+    margin: 0 0 20px 0;
+}
+
+/* CAMPO DE BUSCA */
+
+.buscar-menu {
+    width: 100%;
+
+    height: 58px;
+
+    padding: 10px 18px;
+
+    border: 2px solid #d0d0d0;
+    border-radius: 15px;
+
+    background: white;
+
+    font-size: 20px;
+    color: #333;
+
+    margin: 0 0 18px 0;
+}
+
+.buscar-menu::placeholder {
+    color: #777;
+}
+
+/* BOTÕES */
+
+.botao-menu-item {
+    width: 100%;
+
+    height: 55px;
+
+    border: none;
+    border-radius: 16px;
+
+    color: white;
+
+    font-size: 20px;
+    font-weight: bold;
+
+    margin: 0 0 12px 0;
+
+    padding: 0 10px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+}
+
+/* CORES */
+
+.menu-tema {
+    background: #f9a00b;
+}
+
+.menu-cor {
+    background: #8956ed;
+}
+
+.menu-exportar {
+    background: #637de2;
+}
+
+.menu-importar {
+    background: #2f8b61;
+}
+
+.menu-pomodoro {
+    background: #e83d93;
+}
+
+.menu-fechar {
+    background: #e93636;
+    margin-bottom: 0;
+}
+
+/* CELULAR */
+
+@media (max-width: 500px) {
+
+    .modal-menu {
+        padding: 15px;
+    }
+
+    .conteudo-menu {
+        width: 100%;
+        padding: 28px 25px;
+        border-radius: 25px;
+    }
+
+    .titulo-menu {
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    .buscar-menu {
+        height: 58px;
+        font-size: 20px;
+        margin-bottom: 18px;
+    }
+
+    .botao-menu-item {
+        height: 55px;
+        font-size: 20px;
+        margin-bottom: 12px;
+        border-radius: 16px;
+    }
+}
+
+/* =========================================
+   MODO ESCURO
+   ========================================= */
+
+/* NÃO altera o fundo roxo/azul da página */
+body.tema-escuro {
+    color: white;
+}
+
+
+/* =========================================
+   CARTÕES PRINCIPAIS
+   ========================================= */
+
+body.tema-escuro .card {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .contador {
+    background: #000;
+    color: white;
+}
+
+
+/* Títulos dos cartões */
+body.tema-escuro .card h3 {
+    color: white !important;
+}
+
+
+/* =========================================
+   TAREFAS
+   ========================================= */
+
+body.tema-escuro .tarefa {
+    background: #111;
+    color: white;
+}
+
+body.tema-escuro .nome {
+    color: white;
+}
+
+body.tema-escuro .data,
+body.tema-escuro .hora-lembrete {
+    color: #ccc;
+}
+
+body.tema-escuro .tipo {
+    color: #8b9cf7;
+}
+
+body.tema-escuro .sem-tipo,
+body.tema-escuro .hora-vazia {
+    color: #aaa;
+}
+
+
+/* =========================================
+   TAREFAS CONCLUÍDAS
+   ========================================= */
+
+body.tema-escuro .cabecalho-concluidas {
+    color: #4ade80;
+}
+
+
+/* =========================================
+   MODAL NOVA TAREFA
+   ========================================= */
+
+body.tema-escuro .conteudo-modal {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .conteudo-modal h2 {
+    color: white;
+}
+
+body.tema-escuro label {
+    color: white;
+}
+
+body.tema-escuro input,
+body.tema-escuro select {
+    background: #111;
+    color: white;
+    border-color: #444;
+}
+
+body.tema-escuro input::placeholder {
+    color: #aaa;
+}
+
+.tarefa-atrasada {
+    color: #dc2626;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+
+/* =========================================
+   MENU
+   ========================================= */
+
+body.tema-escuro .conteudo-menu {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .titulo-menu {
+    color: white;
+}
+
+body.tema-escuro .buscar-menu {
+    background: #111;
+    color: white;
+    border-color: #444;
+}
+
+body.tema-escuro .buscar-menu::placeholder {
+    color: #aaa;
+}
+
+
+/* =========================================
+   BOTÕES REDONDOS DO TOPO
+   ☰ e +
+   ========================================= */
+
+body.tema-escuro .botao-menu,
+body.tema-escuro .botao-mais {
+    background: #000 !important;
+    color: white !important;
+}
+
+
+/* =========================================
+   BOTÕES DO MENU
+   Mantém as cores originais
+   ========================================= */
+
+body.tema-escuro .menu-tema {
+    background: #f9a00b !important;
+    color: white !important;
+}
+
+.tema-escuro .menu-cor {
+    background: #8956ed !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-exportar {
+    background: #637de2 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-importar {
+    background: #2f8b61 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-pomodoro {
+    background: #e83d93 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-fechar {
+    background: #e93636 !important;
+    color: white !important;
+}
+
+
+/* =========================================
+   MENSAGENS VAZIAS
+   ========================================= */
+
+body.tema-escuro .vazio,
+body.tema-escuro .sem-foto {
+    color: #aaa;
+}
+
+
+/* =========================================
+   HORÁRIO
+   ========================================= */
+
+body.tema-escuro .horario-titulo {
+    color: #8b9cf7;
+}
+
+
+/* =========================================
+   BOTÃO DE FOTO
+   ========================================= */
+
+body.tema-escuro .btn-foto {
+    color: white;
+}
+
+/* ==============================
+   POMODORO NO MODO ESCURO
+   ============================== */
+
+body.tema-escuro .card-pomodoro {
+    background: #000;
+    color: #ffffff;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+
+body.tema-escuro .card-pomodoro h3 {
+    color: #ec4899;
+}
+
+body.tema-escuro .btn-info {
+    color: #ec4899;
+}
+
+body.tema-escuro .instrucao-pomodoro {
+    background: #3a2433;
+    color: #eeeeee;
+}
+
+body.tema-escuro .cronometro {
+    color: #ffffff;
+}
+/* ============================= */
+/* JANELA DE ESCOLHER COR */
+/* ============================= */
+
+.color-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    background: rgba(0, 0, 0, 0.55);
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.color-modal.active {
+    display: flex;
+}
+
+/* Caixa flutuante */
+
+.color-box {
+    width: min(390px, 92vw);
+
+    background: white;
+    color: #222;
+
+    border-radius: 25px;
+
+    padding: 22px;
+
+    box-sizing: border-box;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.35);
+
+    animation: colorPopup 0.2s ease;
+}
+
+@keyframes colorPopup {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.color-box h2 {
+    margin: 0 0 18px;
+    font-size: 25px;
+    text-align: center;
+}
+
+/* ============================= */
+/* QUADRADO DE CORES */
+/* ============================= */
+
+.color-area {
+    position: relative;
+
+    width: 100%;
+    height: 240px;
+
+    border-radius: 15px;
+
+    overflow: hidden;
+
+    cursor: crosshair;
+
+    background:
+        linear-gradient(
+            to bottom,
+            transparent 0%,
+            #000 100%
+        ),
+        linear-gradient(
+            to right,
+            #fff 0%,
+            hsl(200, 100%, 50%) 100%
+        );
+}
+
+/* Marcador */
+
+.color-cursor {
+    position: absolute;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+
+    border: 3px solid white;
+
+    box-shadow:
+        0 0 0 2px rgba(0,0,0,0.8),
+        0 2px 6px rgba(0,0,0,0.4);
+
+    transform: translate(-50%, -50%);
+
+    left: 100%;
+    top: 0%;
+
+    pointer-events: none;
+}
+
+/* ============================= */
+/* BARRA DE TONALIDADE */
+/* ============================= */
+
+.hue-container {
+    margin-top: 18px;
+}
+
+#hueRange {
+    width: 100%;
+    height: 25px;
+
+    margin: 0;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    border-radius: 20px;
+
+    background: linear-gradient(
+        to right,
+        red,
+        yellow,
+        lime,
+        cyan,
+        blue,
+        magenta,
+        red
+    );
+
+    cursor: pointer;
+}
+
+#hueRange::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+
+    width: 27px;
+    height: 27px;
+
+    border-radius: 50%;
+
+    background: white;
+
+    border: 3px solid #111;
+
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+#hueRange::-moz-range-thumb {
+    width: 27px;
+    height: 27px;
+
+    border-radius: 50%;
+
+    background: white;
+
+    border: 3px solid #111;
+}
+
+/* ============================= */
+/* PREVIEW */
+/* ============================= */
+
+.color-preview {
+    display: flex;
+
+    align-items: center;
+    gap: 10px;
+
+    margin-top: 18px;
+
+    font-size: 15px;
+}
+
+#colorPreview {
+    width: 42px;
+    height: 42px;
+
+    border-radius: 10px;
+
+    background: #00BFFF;
+
+    border: 2px solid #ddd;
+}
+
+#colorHex {
+    font-weight: bold;
+}
+
+/* ============================= */
+/* BOTÕES */
+/* ============================= */
+
+.color-actions {
+    display: flex;
+
+    gap: 12px;
+
+    margin-top: 20px;
+}
+
+.color-actions button {
+    flex: 1;
+
+    border: none;
+
+    border-radius: 14px;
+
+    padding: 14px;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+#cancelColor {
+    background: #e5e5e5;
+    color: #222;
+}
+
+#confirmColor {
+    background: #4caf50;
+    color: white;
+}
+
+#cancelColor:active,
+#confirmColor:active {
+    transform: scale(0.97);
+}
+
+/* ===== ÁREA DO POMODORO ===== */
+.card-pomodoro {
+    background: white;
+    border-radius: 20px;
+    padding: 25px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    display: none;
+    text-align: center;
+}
+
+.card-pomodoro h3 {
+    color: #ec4899;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+/* Botão de Informações */
+.btn-info {
+    color: #ec4899;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 auto 10px;
+    user-select: none;
+}
+
+.seta-info {
+    transition: transform 0.3s ease;
+}
+
+.btn-info.aberto .seta-info {
+    transform: rotate(180deg);
+}
+
+/* Instruções começam fechadas */
+.instrucao-pomodoro {
+    color: #555;
+    font-size: 16px;
+    line-height: 1.5;
+    background: #fce7f3;
+    padding: 0 12px;
+    border-radius: 10px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease,
+                padding 0.3s ease,
+                margin 0.3s ease;
+    margin: 0 auto;
+}
+
+/* Quando abrir Informações */
+.instrucao-pomodoro.aberto {
+    max-height: 200px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.cronometro {
+    font-size: 48px;
+    font-weight: bold;
+    color: #333;
+    margin: 15px 0;
+}
+
+.botoes-pomodoro {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-pom {
+    width: auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 0;
+}
+
+.btn-iniciar {
+    background: #10b981;
+    color: white;
+}
+
+.btn-pausar {
+    background: #f59e0b;
+    color: white;
+    display: none;
+}
+
+.btn-continuar {
+    background: #3b82f6;
+    color: white;
+    display: none;
+}
+
+.btn-zerar {
+    background: #ef4444;
+    color: white;
+}
+    </style>
+</head>
+<body>
+
+    <div class="barra-topo">
+        <button class="botao-menu" id="botaoMenu">☰</button>
+        <div class="titulo-topo">
+            📚 Minhas Tarefas
+        </div>
+        <button class="botao-mais" id="botaoMais">+</button>
+    </div>
+    <div class="modal-menu" id="modalMenu">
+
+    <div class="conteudo-menu">
+
+        <h2 class="titulo-menu">Menu</h2>
+
+        <input
+            type="text"
+            class="buscar-menu"
+            id="buscarTarefa"
+            placeholder="Buscar tarefa..."
+        >
+
+<button class="botao-menu-item menu-tema" id="btnTema">
+    🌙 / ☀️ &nbsp; Tema Claro/Escuro
+</button>
+
+        <button class="botao-menu-item menu-cor">
+            🎨 &nbsp; Escolher Cor de Fundo
+        </button>
+
+        <button
+    class="botao-menu-item menu-exportar"
+    id="btnExportar"
+>
+    📥 &nbsp; Exportar
+</button>
+
+<button
+    class="botao-menu-item menu-importar"
+    id="btnImportar"
+>
+    📤 &nbsp; Importar
+</button>
+
+<button class="botao-menu-item menu-pomodoro" id="abrirPomodoro">
+    ⏱️ &nbsp; Pomodoro
+</button>
+
+        <button
+            class="botao-menu-item menu-fechar"
+            id="btnFecharMenu"
+        >
+            Fechar
+        </button>
+
+    </div>
+
+</div>
+
+    <div class="modal-nova-tarefa" id="modalNovaTarefa">
+        <div class="conteudo-modal">
+          <input
+    type="file"
+    id="arquivoImportar"
+    accept=".json,application/json"
+    style="display:none;"
+>
+            <h2>Nova Tarefa</h2>
+            
+            <label>Tipo:</label>
+            <select id="tipoTarefa">
+                <option value="">Não definido</option>
+                <option value="Prova">📝 Prova</option>
+                <option value="Tarefa">📋 Tarefa</option>
+                <option value="Apresentação">🎤 Apresentação</option>
+                <option value="Trabalho">📄 Trabalho</option>
+                <option value="Exercício">✏️ Exercício</option>
+                <option value="Recuperação">🩹 Recuperação</option>
+            </select>
+
+            <label>Nome:</label>
+            <input type="text" id="nomeMateria" placeholder="Ex: Matemática">
+
+            <label>Urgência:</label>
+            <select id="urgenciaTarefa">
+                <option value="">Não definida</option>
+                <option value="alta">🔴 Alta</option>
+                <option value="media">🟡 Média</option>
+                <option value="baixa">🟢 Baixa</option>
+            </select>
+
+            <label>Data:</label>
+            <input type="date" id="dataTarefa">
+
+            <label>Hora:</label>
+            <input type="time" id="horaLembrete">
+
+            <button class="btn-salvar" id="btnSalvar">Salvar</button>
+            <button class="btn-fechar" id="btnFechar">Fechar</button>
+        </div>
+    </div>
+
+    <div class="contadores">
+        <div class="contador pend">
+            <span id="numPend">0</span>
+            Pendentes
+        </div>
+        <div class="contador conc">
+            <span id="numConc">0</span>
+            Concluídas
+        </div>
+        <div class="contador porc">
+            <span id="numPorc">0%</span>
+            Concluídas
+        </div>
+    </div>
+  
+<!-- ===== CARD DO POMODORO ===== -->
+<div class="card-pomodoro" id="cardPomodoro">
+
+    <h3>⏱️ Técnica Pomodoro</h3>
+
+    <!-- Botão Informações -->
+    <div class="btn-info" id="btnInfo">
+        ℹ️ Informações
+        <span class="seta-info">▼</span>
+    </div>
+
+    <!-- Informações fechadas inicialmente -->
+    <div class="instrucao-pomodoro" id="instrucaoPomodoro">
+        ✅ Ciclo padrão:
+        <strong>25 minutos de foco/estudo intenso</strong><br>
+
+        🧘 Depois:
+        <strong>5 minutos de descanso curto</strong><br>
+
+        Repita quantas vezes precisar!
+    </div>
+
+    <!-- Cronômetro -->
+    <div class="cronometro" id="cronometro">
+        25:00
+    </div>
+
+    <!-- Botões -->
+    <div class="botoes-pomodoro">
+
+        <button
+            class="btn-pom btn-iniciar"
+            id="btnIniciar">
+            Iniciar
+        </button>
+
+        <button
+            class="btn-pom btn-pausar"
+            id="btnPausar">
+            Pausar
+        </button>
+
+        <button
+            class="btn-pom btn-continuar"
+            id="btnContinuar">
+            Continuar
+        </button>
+
+        <button
+            class="btn-pom btn-zerar"
+            id="btnZerar">
+            Zerar
+        </button>
+
+    </div>
+
+</div>
+
+</div>
+
+    <div class="card">
+        <h3 style="color:#333; margin-bottom:15px; font-size:20px; font-weight:bold; display:flex; align-items:center; gap:8px;">⏳ Tarefas Pendentes</h3>
+        <div id="listaPendentes"><div class="vazio">Nenhuma tarefa pendente 😊</div></div>
+    </div>
+
+    <div class="card">
+        <div class="cabecalho-concluidas" onclick="toggleConcluidas()">
+            <span style="display:flex; align-items:center; gap:8px;">✅ Tarefas Concluídas</span>
+            <span class="seta">▼</span>
+        </div>
+        <div class="conteudo-concluidas" id="conteudoConcluidas">
+            <div id="listaConcluidas"><div class="vazio">Nenhuma tarefa concluída ainda</div></div>
+            <button class="btn-del" onclick="apagarTodasConcluidas()">🗑️ Apagar Todas Concluídas</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="horario-titulo">📅 Meu Horário de Aulas</h3>
+        
+        <img id="fotoHorario" class="imagem-horario" alt="Seu horário de aulas aparecerá aqui">
+        <div id="mensagemSemFoto" class="sem-foto">Nenhuma foto adicionada ainda 😔<br>Clique no botão abaixo para colocar seu horário!</div>
+        
+        <input type="file" id="escolherFoto" accept="image/*" style="display:none;">
+        <button id="botaoFoto" class="btn-foto" onclick="document.getElementById('escolherFoto').click()">📷 Selecionar minha foto do horário</button>
+        <button id="botaoApagarFoto" class="btn-apagar-foto" onclick="apagarFoto()">🗑️ Excluir foto do horário</button>
+    </div>
+    
+    <!-- JANELA DE ESCOLHER COR -->
+<div id="colorModal" class="color-modal">
+
+    <div class="color-box">
+
+        <h2>🎨 Escolher Cor</h2>
+
+        <!-- Área principal -->
+        <div id="colorArea" class="color-area">
+            <div id="colorCursor" class="color-cursor"></div>
+        </div>
+
+        <!-- Barra de tonalidade -->
+        <div class="hue-container">
+            <input
+                type="range"
+                id="hueRange"
+                min="0"
+                max="360"
+                value="200"
+            >
+        </div>
+
+        <!-- Cor atual -->
+        <div class="color-preview">
+            <span>Cor selecionada:</span>
+            <div id="colorPreview"></div>
+            <span id="colorHex">#00BFFF</span>
+        </div>
+
+        <!-- Botões -->
+        <div class="color-actions">
+            <button id="cancelColor">Cancelar</button>
+            <button id="confirmColor">Confirmar</button>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const colorModal = document.getElementById("colorModal");
+const colorArea = document.getElementById("colorArea");
+const colorCursor = document.getElementById("colorCursor");
+const hueRange = document.getElementById("hueRange");
+
+const colorPreview = document.getElementById("colorPreview");
+const colorHex = document.getElementById("colorHex");
+
+const cancelColor = document.getElementById("cancelColor");
+const confirmColor = document.getElementById("confirmColor");
+
+let hue = 200;
+let saturation = 1;
+let value = 1;
+
+let selectedColor = "#00BFFF";
+
+let originalBackground = "";
+
+
+/* ================================= */
+/* ABRIR O SELETOR */
+/* ================================= */
+
+document.querySelector(".menu-cor").addEventListener("click", function () {
+
+    originalBackground = document.body.style.backgroundColor;
+
+    colorModal.classList.add("active");
+
+    atualizarCor();
+
+});
+
+
+/* ================================= */
+/* MOVER DENTRO DO QUADRADO */
+/* ================================= */
+
+function escolherNoQuadrado(event) {
+
+    const rect = colorArea.getBoundingClientRect();
+
+    let x = event.clientX - rect.left;
+    let y = event.clientY - rect.top;
+
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+
+    saturation = x / rect.width;
+    value = 1 - (y / rect.height);
+
+    colorCursor.style.left = (saturation * 100) + "%";
+    colorCursor.style.top = ((1 - value) * 100) + "%";
+
+    atualizarCor();
+}
+
+
+/* Clique */
+
+colorArea.addEventListener("pointerdown", function(event) {
+
+    escolherNoQuadrado(event);
+
+    function mover(e) {
+        escolherNoQuadrado(e);
+    }
+
+    function parar() {
+
+        document.removeEventListener(
+            "pointermove",
+            mover
+        );
+
+        document.removeEventListener(
+            "pointerup",
+            parar
+        );
+    }
+
+    document.addEventListener(
+        "pointermove",
+        mover
+    );
+
+    document.addEventListener(
+        "pointerup",
+        parar
+    );
+
+});
+
+
+/* ================================= */
+/* MUDAR TONALIDADE */
+/* ================================= */
+
+hueRange.addEventListener("input", function() {
+
+    hue = Number(this.value);
+
+    atualizarFundoQuadrado();
+
+    atualizarCor();
+
+});
+
+
+/* ================================= */
+/* ATUALIZAR O QUADRADO */
+/* ================================= */
+
+function atualizarFundoQuadrado() {
+
+    colorArea.style.background =
+        `
+        linear-gradient(
+            to bottom,
+            transparent 0%,
+            #000 100%
+        ),
+        linear-gradient(
+            to right,
+            #fff 0%,
+            hsl(${hue}, 100%, 50%) 100%
+        )
+        `;
+}
+
+
+/* ================================= */
+/* HSV → RGB */
+/* ================================= */
+
+function hsvParaRgb(h, s, v) {
+
+    let r, g, b;
+
+    let i = Math.floor(h / 60);
+
+    let f = h / 60 - i;
+
+    let p = v * (1 - s);
+
+    let q = v * (1 - f * s);
+
+    let t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+
+        case 0:
+            r = v;
+            g = t;
+            b = p;
+            break;
+
+        case 1:
+            r = q;
+            g = v;
+            b = p;
+            break;
+
+        case 2:
+            r = p;
+            g = v;
+            b = t;
+            break;
+
+        case 3:
+            r = p;
+            g = q;
+            b = v;
+            break;
+
+        case 4:
+            r = t;
+            g = p;
+            b = v;
+            break;
+
+        case 5:
+            r = v;
+            g = p;
+            b = q;
+            break;
+    }
+
+    return [
+        Math.round(r * 255),
+        Math.round(g * 255),
+        Math.round(b * 255)
+    ];
+}
+
+
+/* ================================= */
+/* RGB → HEX */
+/* ================================= */
+
+function rgbParaHex(r, g, b) {
+
+    return "#" +
+        [r, g, b]
+        .map(x => x.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+
+}
+
+
+/* ================================= */
+/* ATUALIZAR COR */
+/* ================================= */
+
+function atualizarCor() {
+
+    atualizarFundoQuadrado();
+
+    const rgb = hsvParaRgb(
+        hue,
+        saturation,
+        value
+    );
+
+    selectedColor = rgbParaHex(
+        rgb[0],
+        rgb[1],
+        rgb[2]
+    );
+
+    colorPreview.style.background =
+        selectedColor;
+
+    colorHex.textContent =
+        selectedColor;
+
+}
+
+
+/* ================================= */
+/* CONFIRMAR */
+/* ================================= */
+
+confirmColor.addEventListener("click", function() {
+
+    // Aplica a cor escolhida como fundo
+    document.body.style.background = selectedColor;
+
+    // Salva a cor para continuar depois de fechar/reabrir
+    localStorage.setItem(
+        "corFundoAgenda",
+        selectedColor
+    );
+
+    // Fecha a janela
+    colorModal.classList.remove("active");
+
+});
+
+
+/* ================================= */
+/* CANCELAR */
+/* ================================= */
+
+cancelColor.addEventListener("click", function() {
+
+    colorModal.classList.remove("active");
+
+});
+
+
+/* ================================= */
+/* CLICAR FORA DA JANELA */
+/* ================================= */
+
+colorModal.addEventListener("click", function(event) {
+
+    if (event.target === colorModal) {
+
+        colorModal.classList.remove("active");
+
+    }
+
+});
+
+
+/* ================================= */
+/* CARREGAR COR SALVA */
+/* ================================= */
+
+const corSalva =
+    localStorage.getItem("corFundoAgenda");
+
+if (corSalva) {
+    document.body.style.background = corSalva;
+}
+
+</script>
+
+    <script>
+        let tarefas = JSON.parse(localStorage.getItem('tarefasApp')) || [];
+        /* ==============================
+   MENU FLUTUANTE
+   ============================== */
+
+const botaoMenu = document.getElementById('botaoMenu');
+const modalMenu = document.getElementById('modalMenu');
+const btnFecharMenu = document.getElementById('btnFecharMenu');
+
+
+// =================================
+// TEMA CLARO / ESCURO
+// =================================
+
+const btnTema = document.getElementById('btnTema');
+
+// Carrega o tema salvo
+const temaSalvo = localStorage.getItem('temaAgenda');
+
+if (temaSalvo === 'escuro') {
+    document.body.classList.add('tema-escuro');
+}
+
+btnTema.addEventListener('click', () => {
+
+    document.body.classList.toggle('tema-escuro');
+
+    const estaEscuro =
+        document.body.classList.contains('tema-escuro');
+
+    localStorage.setItem(
+        'temaAgenda',
+        estaEscuro ? 'escuro' : 'claro'
+    );
+});
+// ==============================
+// EXPORTAR E IMPORTAR
+// ==============================
+
+const btnExportar = document.getElementById('btnExportar');
+const btnImportar = document.getElementById('btnImportar');
+const arquivoImportar = document.getElementById('arquivoImportar');
+
+
+// ==============================
+// EXPORTAR
+// ==============================
+
+btnExportar.addEventListener('click', () => {
+
+    // Pega a foto do horário salva
+    const fotoHorario = localStorage.getItem('fotoHorarioAulas') || null;
+
+    // Junta todos os dados da agenda
+    const dados = {
+        versao: 1,
+        tarefas: tarefas,
+        fotoHorario: fotoHorario
+    };
+
+    // Transforma os dados em JSON
+    const conteudo = JSON.stringify(dados, null, 2);
+
+    // Cria o arquivo
+    const arquivo = new Blob(
+        [conteudo],
+        { type: 'application/json' }
+    );
+
+    // Cria um endereço temporário para o arquivo
+    const url = URL.createObjectURL(arquivo);
+
+    // Cria o download
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'minhas-tarefas-backup.json';
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    // Libera a memória
+    URL.revokeObjectURL(url);
+
+    // Fecha o menu
+    modalMenu.classList.remove('aberto');
+
+    alert('✅ Dados exportados com sucesso!');
+});
+
+
+// ==============================
+// BOTÃO IMPORTAR
+// ==============================
+
+btnImportar.addEventListener('click', () => {
+
+    // Abre o seletor de arquivos
+    arquivoImportar.click();
+
+});
+
+
+// ==============================
+// LER ARQUIVO IMPORTADO
+// ==============================
+
+arquivoImportar.addEventListener('change', function(evento) {
+
+    const arquivo = evento.target.files[0];
+
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+
+    leitor.onload = function(e) {
+
+        try {
+
+            const dados = JSON.parse(e.target.result);
+
+            // Verifica se o arquivo é realmente um backup
+            if (
+                !dados ||
+                !Array.isArray(dados.tarefas)
+            ) {
+                throw new Error('Arquivo inválido');
+            }
+
+            // Confirma antes de substituir os dados atuais
+            const confirmar = confirm(
+                '⚠️ Importar este backup irá substituir as tarefas atuais.\\n\\nDeseja continuar?'
+            );
+
+            if (!confirmar) {
+                arquivoImportar.value = '';
+                return;
+            }
+
+            // Recupera as tarefas
+            tarefas = dados.tarefas;
+
+            // Salva as tarefas
+            salvar();
+
+            // Recupera a foto do horário
+            if (dados.fotoHorario) {
+
+                localStorage.setItem(
+                    'fotoHorarioAulas',
+                    dados.fotoHorario
+                );
+
+            } else {
+
+                localStorage.removeItem('fotoHorarioAulas');
+
+            }
+
+            // Atualiza a tela
+            atualizarTelas();
+
+            // Atualiza a foto
+            carregarFotoSalva();
+
+            // Fecha o menu
+            modalMenu.classList.remove('aberto');
+
+            alert('✅ Dados importados com sucesso!');
+
+        } catch (erro) {
+
+            alert(
+                '❌ Não foi possível importar este arquivo.\\n\\n' +
+                'Verifique se ele é um backup válido da Agenda de Tarefas.'
+            );
+
+            console.error(erro);
+
+        }
+
+        // Permite selecionar o mesmo arquivo novamente
+        arquivoImportar.value = '';
+
+    };
+
+    leitor.readAsText(arquivo);
+
+});
+botaoMenu.addEventListener('click', () => {
+    modalMenu.classList.add('aberto');
+});
+
+btnFecharMenu.addEventListener('click', () => {
+    modalMenu.classList.remove('aberto');
+});
+
+/* Fecha ao tocar fora da caixa branca */
+
+modalMenu.addEventListener('click', function(e) {
+    if (e.target === modalMenu) {
+        modalMenu.classList.remove('aberto');
+    }
+});
+
+        window.onload = () => {
+            atualizarTelas();
+            carregarFotoSalva();
+        };
+
+        const botaoMais = document.getElementById('botaoMais');
+        const modalNovaTarefa = document.getElementById('modalNovaTarefa');
+        const btnFechar = document.getElementById('btnFechar');
+
+        botaoMais.addEventListener('click', () => modalNovaTarefa.classList.add('aberto'));
+        btnFechar.addEventListener('click', () => modalNovaTarefa.classList.remove('aberto'));
+
+        const inputFoto = document.getElementById('escolherFoto');
+        const imgHorario = document.getElementById('fotoHorario');
+        const msgSemFoto = document.getElementById('mensagemSemFoto');
+        const botaoFoto = document.getElementById('botaoFoto');
+        const botaoApagarFoto = document.getElementById('botaoApagarFoto');
+
+        inputFoto.addEventListener('change', function(e) {
+            const arquivo = e.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = function(evento) {
+                imgHorario.src = evento.target.result;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block';
+                localStorage.setItem('fotoHorarioAulas', evento.target.result);
+            }
+            leitor.readAsDataURL(arquivo);
+        });
+
+        function carregarFotoSalva() {
+            const fotoSalva = localStorage.getItem('fotoHorarioAulas');
+            if (fotoSalva) {
+                imgHorario.src = fotoSalva;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block';
+            }
+        }
+
+        function apagarFoto() {
+            if (confirm('Tem certeza que quer excluir a foto do horário?')) {
+                localStorage.removeItem('fotoHorarioAulas');
+                imgHorario.src = '';
+                imgHorario.style.display = 'none';
+                msgSemFoto.style.display = 'block';
+                botaoFoto.textContent = "📷 Selecionar minha foto do horário";
+                botaoApagarFoto.style.display = 'none';
+                inputFoto.value = '';
+            }
+        }
+
+        document.getElementById('btnSalvar').addEventListener('click', function() {
+            const tipo = document.getElementById('tipoTarefa').value.trim();
+            const nome = document.getElementById('nomeMateria').value.trim();
+            const urgencia = document.getElementById('urgenciaTarefa').value.trim();
+            const data = document.getElementById('dataTarefa').value;
+            const hora = document.getElementById('horaLembrete').value.trim();
+            
+            if (!nome || !data) return alert('Por favor, preencha o nome e a data da tarefa!');
+
+            tarefas.push({ tipo, nome, urgencia, data, hora, concluida: false, dataConclusao: null, ordemConclusao: null });
+            salvar();
+            atualizarTelas();
+            
+            document.getElementById('tipoTarefa').value = '';
+            document.getElementById('nomeMateria').value = '';
+            document.getElementById('urgenciaTarefa').value = '';
+            document.getElementById('dataTarefa').value = '';
+            document.getElementById('horaLembrete').value = '';
+            modalNovaTarefa.classList.remove('aberto');
+        });
+
+        function mudarStatus(indice) {
+            const tarefa = tarefas[indice];
+            tarefa.concluida = !tarefa.concluida;
+
+            if (tarefa.concluida) {
+                tarefa.dataConclusao = new Date().toLocaleString('pt-BR');
+                tarefa.ordemConclusao = Date.now();
+            } else {
+                tarefa.dataConclusao = null;
+                tarefa.ordemConclusao = null;
+            }
+
+            salvar();
+            atualizarTelas();
+        }
+
+        function toggleConcluidas() {
+            document.getElementById('conteudoConcluidas').classList.toggle('aberto');
+            document.querySelector('.cabecalho-concluidas').classList.toggle('aberto');
+        }
+
+        function apagarTodasConcluidas() {
+            if (confirm('Apagar todas as tarefas concluídas?')) {
+                tarefas = tarefas.filter(t => !t.concluida);
+                salvar(); 
+                atualizarTelas();
+            }
+        }
+
+        function atualizarTelas() {
+            const pendentes = tarefas
+    .filter(t => !t.concluida)
+    .sort((a, b) => {
+
+        // Ordem de prioridade da urgência
+        const prioridade = {
+            alta: 1,
+            media: 2,
+            baixa: 3,
+            "": 4
+        };
+
+        const urgenciaA = prioridade[a.urgencia] || 4;
+        const urgenciaB = prioridade[b.urgencia] || 4;
+
+        // Primeiro: urgência
+        if (urgenciaA !== urgenciaB) {
+            return urgenciaA - urgenciaB;
+        }
+
+        // Depois: data
+        return new Date(a.data) - new Date(b.data);
+    });
+            const concluidas = tarefas.filter(t => t.concluida).sort((a, b) => b.ordemConclusao - a.ordemConclusao);
+
+            document.getElementById('numPend').textContent = pendentes.length;
+            document.getElementById('numConc').textContent = concluidas.length;
+            const total = tarefas.length;
+            const porcentagem = total > 0 ? Math.round((concluidas.length / total)*100) : 0;
+            document.getElementById('numPorc').textContent = porcentagem + '%';
+
+            const listaPendEl = document.getElementById('listaPendentes');
+            listaPendEl.innerHTML = '';
+            if (pendentes.length === 0) {
+                listaPendEl.innerHTML = `<div class="vazio">Nenhuma tarefa pendente 😊</div>`;
+            } else {
+                pendentes.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaPendEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
+
+            const listaConcEl = document.getElementById('listaConcluidas');
+            listaConcEl.innerHTML = '';
+            if (concluidas.length === 0) {
+                listaConcEl.innerHTML = `<div class="vazio">Nenhuma tarefa concluída ainda</div>`;
+            } else {
+                concluidas.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaConcEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
+        }
+
+       function criarHtml(t, ind) {
+    let extra = '';
+
+    if (t.concluida) {
+        extra = `<div class="data-conclusao">✅ Concluída em: ${t.dataConclusao}</div>`;
+    }
+
+    // Verifica se está atrasada PRIMEIRO
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const dataEntrega = new Date(t.data + 'T12:00:00');
+
+    const atrasada = !t.concluida && dataEntrega < hoje;
+
+
+    // AGORA pode usar "atrasada"
+    let linhaTipo = t.tipo
+        ? `<div class="tipo">${t.tipo}${atrasada ? ' <span class="tarefa-atrasada">🔴 Atrasada</span>' : ''}</div>`
+        : `<div class="tipo sem-tipo">Não definido${atrasada ? ' <span class="tarefa-atrasada">🔴 Atrasada</span>' : ''}</div>`;
+
+
+    let textoHora = t.hora
+        ? `🕒 Horário: ${t.hora}`
+        : `<span class="hora-vazia">🕒 Horário: Não definido</span>`;
+
+
+    let classeUrgencia = t.urgencia
+        ? `urg-${t.urgencia}`
+        : 'urg-não-definida';
+
+
+    return `
+        <div class="tarefa ${classeUrgencia} ${t.concluida?'concluida':''}">
+            <input type="checkbox" ${t.concluida?'checked':''} onchange="mudarStatus(${ind})">
+
+            <div class="info">
+                ${linhaTipo}
+                <div class="nome">${t.nome}</div>
+                <div class="data">
+                    📅 Dia da entrega:
+                    ${new Date(t.data+'T12:00:00').toLocaleDateString('pt-BR')}
+                </div>
+
+                <div class="hora-lembrete">${textoHora}</div>
+
+                ${extra}
+            </div>
+        </div>
+    `;
+}
+
+        function salvar() {
+            localStorage.setItem('tarefasApp', JSON.stringify(tarefas));
+        }
+// ===== POMODORO =====
+
+let intervalo;
+let tempoRestanteSegundos = 25 * 60;
+let modoTrabalho = true;
+
+const btnAbrirPomodoro = document.getElementById('abrirPomodoro');
+const cardPomodoro = document.getElementById('cardPomodoro');
+
+const btnInfo = document.getElementById('btnInfo');
+const instrucaoPomodoro = document.getElementById('instrucaoPomodoro');
+
+const cronometro = document.getElementById('cronometro');
+
+const btnIniciar = document.getElementById('btnIniciar');
+const btnPausar = document.getElementById('btnPausar');
+const btnContinuar = document.getElementById('btnContinuar');
+const btnZerar = document.getElementById('btnZerar');
+
+
+// ===== ABRIR / FECHAR POMODORO =====
+btnAbrirPomodoro.addEventListener('click', () => {
+
+    if (cardPomodoro.style.display === 'block') {
+
+        // Já está aberto → fecha
+        cardPomodoro.style.display = 'none';
+        modalMenu.classList.remove('aberto');
+
+        btnAbrirPomodoro.innerHTML = '⏱️ Pomodoro';
+
+    } else {
+
+        // Está fechado → abre
+        cardPomodoro.style.display = 'block';
+        modalMenu.classList.remove('aberto');
+
+        btnAbrirPomodoro.innerHTML = '⏱️ Fechar Pomodoro';
+
+        // Volta para o início da página
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+});
+
+// ===== ABRIR / FECHAR INFORMAÇÕES =====
+btnInfo.addEventListener('click', () => {
+
+    instrucaoPomodoro.classList.toggle('aberto');
+    btnInfo.classList.toggle('aberto');
+
+});
+
+// Atualizar relógio
+function atualizarCronometro() {
+
+    const minutos = Math.floor(tempoRestanteSegundos / 60);
+    const segundos = tempoRestanteSegundos % 60;
+
+    cronometro.textContent =
+        String(minutos).padStart(2, '0') +
+        ':' +
+        String(segundos).padStart(2, '0');
+}
+
+
+// Iniciar
+btnIniciar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    intervalo = setInterval(() => {
+
+        if (tempoRestanteSegundos <= 0) {
+
+            clearInterval(intervalo);
+
+            alert(
+                modoTrabalho
+                ? '⏰ Tempo de foco terminou! Hora de descansar.'
+                : '😊 Descanso terminou! Hora de voltar ao foco.'
+            );
+
+            return;
+        }
+
+        tempoRestanteSegundos--;
+
+        atualizarCronometro();
+
+    }, 1000);
+
+    btnIniciar.style.display = 'none';
+    btnPausar.style.display = 'inline-block';
+    btnContinuar.style.display = 'none';
+
+});
+
+
+// Pausar
+btnPausar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    btnPausar.style.display = 'none';
+    btnContinuar.style.display = 'inline-block';
+
+});
+
+
+// Continuar
+btnContinuar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    intervalo = setInterval(() => {
+
+        if (tempoRestanteSegundos <= 0) {
+
+            clearInterval(intervalo);
+
+            alert(
+                modoTrabalho
+                ? '⏰ Tempo de foco terminou! Hora de descansar.'
+                : '😊 Descanso terminou! Hora de voltar ao foco.'
+            );
+
+            return;
+        }
+
+        tempoRestanteSegundos--;
+
+        atualizarCronometro();
+
+    }, 1000);
+
+    btnContinuar.style.display = 'none';
+    btnPausar.style.display = 'inline-block';
+
+});
+
+
+// Zerar
+btnZerar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    modoTrabalho = true;
+    tempoRestanteSegundos = 25 * 60;
+
+    atualizarCronometro();
+
+    btnIniciar.style.display = 'inline-block';
+    btnPausar.style.display = 'none';
+    btnContinuar.style.display = 'none';
+
+});
+    </script>
+</body>
+</html>
