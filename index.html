@@ -1,0 +1,3954 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <title>Agenda de tarefas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 100px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .barra-topo {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        .botao-menu, .botao-mais {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .titulo-topo {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contadores {
+            display: flex;
+            gap: 12px;
+            margin: 10px 0 25px;
+            position: relative;
+            z-index: 1;
+        }
+        .contador {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            padding: 15px 5px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .contador.pend { color: #667eea; }
+        .contador.conc { color: #2f855a; }
+        .contador.porc { color: #f59e0b; }
+        .contador span {
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 8px;
+            font-weight: normal;
+            color: #000;
+            font-size: 18px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            font-size: 17px;
+            background: #eee;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-salvar {
+            background: #667eea;
+            color: white;
+        }
+        .btn-fechar {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-del {
+            background: #e53e3e;
+            color: white;
+        }
+        .btn-foto {
+            background: #38a169;
+            color: white;
+            margin-bottom: 10px;
+        }
+        .btn-apagar-foto {
+            background: #e53e3e;
+            color: white;
+            display: none;
+        }
+
+        /* ✅ FAIXA LATERAL COM CORES DE URGÊNCIA */
+        .tarefa {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            border-left: 5px solid; /* espessura igual da foto */
+        }
+        /* Cores por urgência */
+        .tarefa.urg-alta { border-color: #dc2626; } /* vermelho */
+        .tarefa.urg-media { border-color: #f59e0b; } /* amarelo */
+        .tarefa.urg-baixa { border-color: #10b981; } /* verde */
+        .tarefa.urg-não-definida { border-color: #9ca3af; } /* cinza */
+
+        .tarefa.concluida {
+            opacity: 0.7;
+        }
+        .tarefa.concluida .nome {
+            text-decoration: line-through;
+            color: #555;
+        }
+        .nome {
+            font-weight: bold;
+            font-size: 16px;
+            color: #222;
+        }
+        .tipo {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .sem-tipo {
+            color: #888;
+            font-style: italic;
+        }
+        .data, .hora-lembrete, .data-conclusao {
+            font-size: 13px;
+            margin-top: 4px;
+            display: block;
+        }
+        .data, .hora-lembrete {
+            color: #666;
+        }
+        .hora-vazia {
+            color: #999;
+            font-style: italic;
+        }
+        .data-conclusao {
+            color: #2f855a;
+            font-weight: 500;
+        }
+        input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            margin-top: 3px;
+            cursor: pointer;
+            accent-color: #2f855a;
+        }
+        .info {
+            flex: 1;
+        }
+
+        .cabecalho-concluidas {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 5px 0;
+            color: #2f855a;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .conteudo-concluidas {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+        .conteudo-concluidas.aberto {
+            max-height: 2000px;
+        }
+        .seta {
+            transition: transform 0.3s;
+            font-size: 22px;
+        }
+        .cabecalho-concluidas.aberto .seta {
+            transform: rotate(180deg);
+        }
+
+        .vazio {
+            text-align: center;
+            color: #999;
+            padding: 30px 20px;
+            font-style: italic;
+            font-size: 17px;
+        }
+
+        .horario-titulo {
+            color: #667eea;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .imagem-horario {
+            width: 100%;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            object-fit: contain;
+            display: none;
+            margin-bottom: 15px;
+        }
+        .sem-foto {
+            text-align: center;
+            color: #999;
+            padding: 10px 20px 30px;
+            font-style: italic;
+            font-size: 17px;
+            line-height: 1.5;
+        }
+        .btn-foto {
+            background: #38a169;
+            color: white;
+            font-size: 17px;
+            padding: 14px;
+            border-radius: 12px;
+        }
+
+        .modal-nova-tarefa {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-nova-tarefa.aberto {
+            display: flex;
+        }
+        .conteudo-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 25px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        .conteudo-modal h2 {
+            font-size: 26px;
+            color: #000;
+            margin-bottom: 20px;
+        }
+/* ==============================
+   MENU FLUTUANTE
+   ============================== */
+
+.modal-menu {
+    display: none;
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.60);
+
+    z-index: 50;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 15px;
+}
+
+.modal-menu.aberto {
+    display: flex;
+}
+
+.conteudo-menu {
+    width: 100%;
+    max-width: 635px;
+
+    background: white;
+    border-radius: 25px;
+
+    /* MENOS ESPAÇO INTERNO */
+    padding: 28px 25px;
+
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+}
+
+/* TÍTULO */
+
+.titulo-menu {
+    font-size: 28px;
+    font-weight: normal;
+    color: #111;
+
+    margin: 0 0 20px 0;
+}
+
+/* CAMPO DE BUSCA */
+
+.buscar-menu {
+    width: 100%;
+
+    height: 58px;
+
+    padding: 10px 18px;
+
+    border: 2px solid #d0d0d0;
+    border-radius: 15px;
+
+    background: white;
+
+    font-size: 20px;
+    color: #333;
+
+    margin: 0 0 18px 0;
+}
+
+.buscar-menu::placeholder {
+    color: #777;
+}
+
+/* BOTÕES */
+
+.botao-menu-item {
+    width: 100%;
+
+    height: 55px;
+
+    border: none;
+    border-radius: 16px;
+
+    color: white;
+
+    font-size: 20px;
+    font-weight: bold;
+
+    margin: 0 0 12px 0;
+
+    padding: 0 10px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+}
+
+/* CORES */
+
+.menu-tema {
+    background: #f9a00b;
+}
+
+.menu-cor {
+    background: #8956ed;
+}
+
+.menu-exportar {
+    background: #637de2;
+}
+
+.menu-importar {
+    background: #2f8b61;
+}
+
+.menu-pomodoro {
+    background: #e83d93;
+}
+
+.menu-fechar {
+    background: #e93636;
+    margin-bottom: 0;
+}
+
+/* CELULAR */
+
+@media (max-width: 500px) {
+
+    .modal-menu {
+        padding: 15px;
+    }
+
+    .conteudo-menu {
+        width: 100%;
+        padding: 28px 25px;
+        border-radius: 25px;
+    }
+
+    .titulo-menu {
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    .buscar-menu {
+        height: 58px;
+        font-size: 20px;
+        margin-bottom: 18px;
+    }
+
+    .botao-menu-item {
+        height: 55px;
+        font-size: 20px;
+        margin-bottom: 12px;
+        border-radius: 16px;
+    }
+}
+
+/* =========================================
+   MODO ESCURO
+   ========================================= */
+
+/* NÃO altera o fundo roxo/azul da página */
+body.tema-escuro {
+    color: white;
+}
+
+
+/* =========================================
+   CARTÕES PRINCIPAIS
+   ========================================= */
+
+body.tema-escuro .card {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .contador {
+    background: #000;
+    color: white;
+}
+
+
+/* Títulos dos cartões */
+body.tema-escuro .card h3 {
+    color: white !important;
+}
+
+
+/* =========================================
+   TAREFAS
+   ========================================= */
+
+body.tema-escuro .tarefa {
+    background: #111;
+    color: white;
+}
+
+body.tema-escuro .nome {
+    color: white;
+}
+
+body.tema-escuro .data,
+body.tema-escuro .hora-lembrete {
+    color: #ccc;
+}
+
+body.tema-escuro .tipo {
+    color: #8b9cf7;
+}
+
+body.tema-escuro .sem-tipo,
+body.tema-escuro .hora-vazia {
+    color: #aaa;
+}
+
+
+/* =========================================
+   TAREFAS CONCLUÍDAS
+   ========================================= */
+
+body.tema-escuro .cabecalho-concluidas {
+    color: #4ade80;
+}
+
+
+/* =========================================
+   MODAL NOVA TAREFA
+   ========================================= */
+
+body.tema-escuro .conteudo-modal {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .conteudo-modal h2 {
+    color: white;
+}
+
+body.tema-escuro label {
+    color: white;
+}
+
+body.tema-escuro input,
+body.tema-escuro select {
+    background: #111;
+    color: white;
+    border-color: #444;
+}
+
+body.tema-escuro input::placeholder {
+    color: #aaa;
+}
+
+.tarefa-atrasada {
+    color: #dc2626;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+
+/* =========================================
+   MENU
+   ========================================= */
+
+body.tema-escuro .conteudo-menu {
+    background: #000;
+    color: white;
+}
+
+body.tema-escuro .titulo-menu {
+    color: white;
+}
+
+body.tema-escuro .buscar-menu {
+    background: #111;
+    color: white;
+    border-color: #444;
+}
+
+body.tema-escuro .buscar-menu::placeholder {
+    color: #aaa;
+}
+
+
+/* =========================================
+   BOTÕES REDONDOS DO TOPO
+   ☰ e +
+   ========================================= */
+
+body.tema-escuro .botao-menu,
+body.tema-escuro .botao-mais {
+    background: #000 !important;
+    color: white !important;
+}
+
+
+/* =========================================
+   BOTÕES DO MENU
+   Mantém as cores originais
+   ========================================= */
+
+body.tema-escuro .menu-tema {
+    background: #f9a00b !important;
+    color: white !important;
+}
+
+.tema-escuro .menu-cor {
+    background: #8956ed !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-exportar {
+    background: #637de2 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-importar {
+    background: #2f8b61 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-pomodoro {
+    background: #e83d93 !important;
+    color: white !important;
+}
+
+body.tema-escuro .menu-fechar {
+    background: #e93636 !important;
+    color: white !important;
+}
+
+
+/* =========================================
+   MENSAGENS VAZIAS
+   ========================================= */
+
+body.tema-escuro .vazio,
+body.tema-escuro .sem-foto {
+    color: #aaa;
+}
+
+
+/* =========================================
+   HORÁRIO
+   ========================================= */
+
+body.tema-escuro .horario-titulo {
+    color: #8b9cf7;
+}
+
+
+/* =========================================
+   BOTÃO DE FOTO
+   ========================================= */
+
+body.tema-escuro .btn-foto {
+    color: white;
+}
+
+/* ==============================
+   POMODORO NO MODO ESCURO
+   ============================== */
+
+body.tema-escuro .card-pomodoro {
+    background: #000;
+    color: #ffffff;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+}
+
+body.tema-escuro .card-pomodoro h3 {
+    color: #ec4899;
+}
+
+body.tema-escuro .btn-info {
+    color: #ec4899;
+}
+
+body.tema-escuro .instrucao-pomodoro {
+    background: #3a2433;
+    color: #eeeeee;
+}
+
+body.tema-escuro .cronometro {
+    color: #ffffff;
+}
+/* ============================= */
+/* JANELA DE ESCOLHER COR */
+/* ============================= */
+
+.color-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+
+    background: rgba(0, 0, 0, 0.55);
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.color-modal.active {
+    display: flex;
+}
+
+/* Caixa flutuante */
+
+.color-box {
+    width: min(390px, 92vw);
+
+    background: white;
+    color: #222;
+
+    border-radius: 25px;
+
+    padding: 22px;
+
+    box-sizing: border-box;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.35);
+
+    animation: colorPopup 0.2s ease;
+}
+
+@keyframes colorPopup {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.color-box h2 {
+    margin: 0 0 18px;
+    font-size: 25px;
+    text-align: center;
+}
+
+/* ============================= */
+/* QUADRADO DE CORES */
+/* ============================= */
+
+.color-area {
+    position: relative;
+
+    width: 100%;
+    height: 240px;
+
+    border-radius: 15px;
+
+    overflow: hidden;
+
+    cursor: crosshair;
+
+    background:
+        linear-gradient(
+            to bottom,
+            transparent 0%,
+            #000 100%
+        ),
+        linear-gradient(
+            to right,
+            #fff 0%,
+            hsl(200, 100%, 50%) 100%
+        );
+}
+
+/* Marcador */
+
+.color-cursor {
+    position: absolute;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+
+    border: 3px solid white;
+
+    box-shadow:
+        0 0 0 2px rgba(0,0,0,0.8),
+        0 2px 6px rgba(0,0,0,0.4);
+
+    transform: translate(-50%, -50%);
+
+    left: 100%;
+    top: 0%;
+
+    pointer-events: none;
+}
+
+/* ============================= */
+/* BARRA DE TONALIDADE */
+/* ============================= */
+
+.hue-container {
+    margin-top: 18px;
+}
+
+#hueRange {
+    width: 100%;
+    height: 25px;
+
+    margin: 0;
+
+    appearance: none;
+    -webkit-appearance: none;
+
+    border-radius: 20px;
+
+    background: linear-gradient(
+        to right,
+        red,
+        yellow,
+        lime,
+        cyan,
+        blue,
+        magenta,
+        red
+    );
+
+    cursor: pointer;
+}
+
+#hueRange::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+
+    width: 27px;
+    height: 27px;
+
+    border-radius: 50%;
+
+    background: white;
+
+    border: 3px solid #111;
+
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+#hueRange::-moz-range-thumb {
+    width: 27px;
+    height: 27px;
+
+    border-radius: 50%;
+
+    background: white;
+
+    border: 3px solid #111;
+}
+
+/* ============================= */
+/* PREVIEW */
+/* ============================= */
+
+.color-preview {
+    display: flex;
+
+    align-items: center;
+    gap: 10px;
+
+    margin-top: 18px;
+
+    font-size: 15px;
+}
+
+#colorPreview {
+    width: 42px;
+    height: 42px;
+
+    border-radius: 10px;
+
+    background: #00BFFF;
+
+    border: 2px solid #ddd;
+}
+
+#colorHex {
+    font-weight: bold;
+}
+
+/* ============================= */
+/* BOTÕES */
+/* ============================= */
+
+.color-actions {
+    display: flex;
+
+    gap: 12px;
+
+    margin-top: 20px;
+}
+
+.color-actions button {
+    flex: 1;
+
+    border: none;
+
+    border-radius: 14px;
+
+    padding: 14px;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+#cancelColor {
+    background: #e5e5e5;
+    color: #222;
+}
+
+#confirmColor {
+    background: #4caf50;
+    color: white;
+}
+
+#cancelColor:active,
+#confirmColor:active {
+    transform: scale(0.97);
+}
+
+/* ===== ÁREA DO POMODORO ===== */
+.card-pomodoro {
+    background: white;
+    border-radius: 20px;
+    padding: 25px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    display: none;
+    text-align: center;
+}
+
+.card-pomodoro h3 {
+    color: #ec4899;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+/* Botão de Informações */
+.btn-info {
+    color: #ec4899;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 auto 10px;
+    user-select: none;
+}
+
+.seta-info {
+    transition: transform 0.3s ease;
+}
+
+.btn-info.aberto .seta-info {
+    transform: rotate(180deg);
+}
+
+/* Instruções começam fechadas */
+.instrucao-pomodoro {
+    color: #555;
+    font-size: 16px;
+    line-height: 1.5;
+    background: #fce7f3;
+    padding: 0 12px;
+    border-radius: 10px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease,
+                padding 0.3s ease,
+                margin 0.3s ease;
+    margin: 0 auto;
+}
+
+/* Quando abrir Informações */
+.instrucao-pomodoro.aberto {
+    max-height: 200px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.cronometro {
+    font-size: 48px;
+    font-weight: bold;
+    color: #333;
+    margin: 15px 0;
+}
+
+.botoes-pomodoro {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-pom {
+    width: auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 0;
+}
+
+.btn-iniciar {
+    background: #10b981;
+    color: white;
+}
+
+.btn-pausar {
+    background: #f59e0b;
+    color: white;
+    display: none;
+}
+
+.btn-continuar {
+    background: #3b82f6;
+    color: white;
+    display: none;
+}
+
+.btn-zerar {
+    background: #ef4444;
+    color: white;
+}
+    
+/* ===== NAVEGAÇÃO INFERIOR + CALENDÁRIO ===== */
+.barra-inferior {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 72px;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(10px);
+    display: flex;
+    z-index: 1000;
+    box-shadow: 0 -3px 14px rgba(0,0,0,0.14);
+}
+
+.nav-item {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: #777;
+    margin: 0;
+    padding: 6px 4px;
+    font-size: 13px;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.nav-icone {
+    font-size: 25px;
+    line-height: 1;
+}
+
+.nav-item.ativo {
+    color: #667eea;
+}
+
+body {
+    padding-bottom: 82px;
+}
+
+/* A tela do calendário ocupa o espaço abaixo do topo */
+.pagina-calendario {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 72px;
+    overflow-y: auto;
+    padding: 18px;
+    box-sizing: border-box;
+    z-index: 5;
+}
+
+body.modo-calendario .pagina-calendario {
+    display: block;
+}
+
+/* Esconde apenas o conteúdo normal; o topo e os modais continuam intactos */
+body.modo-calendario .contadores,
+body.modo-calendario .card,
+body.modo-calendario .card-pomodoro {
+    display: none !important;
+}
+
+.calendario-card {
+    background: white;
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+.calendario-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.calendario-cabecalho h2 {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    color: #333;
+    font-size: 21px;
+}
+
+.calendario-seta {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: #667eea;
+    color: white;
+    font-size: 26px;
+    line-height: 1;
+    border: none;
+}
+
+.calendario-semana,
+.calendario-dias {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.calendario-semana {
+    margin-bottom: 8px;
+}
+
+.calendario-semana div {
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.dia-calendario {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: #f3f4f7;
+    color: #333;
+    font-size: 15px;
+}
+
+.dia-vazio {
+    background: transparent;
+}
+
+.dia-hoje {
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 7px rgba(102,126,234,0.35);
+}
+
+body.tema-escuro .barra-inferior {
+    background: rgba(0,0,0,0.96);
+}
+
+body.tema-escuro .nav-item {
+    color: #aaa;
+}
+
+body.tema-escuro .nav-item.ativo {
+    color: #8b9cf7;
+}
+
+body.tema-escuro .calendario-card {
+    background: #111;
+}
+
+body.tema-escuro .calendario-cabecalho h2,
+body.tema-escuro .dia-calendario {
+    color: white;
+}
+
+body.tema-escuro .dia-calendario {
+    background: #1d1d1d;
+}
+
+body.tema-escuro .dia-vazio {
+    background: transparent;
+}
+
+
+/* ===== TAREFAS DENTRO DO CALENDÁRIO ===== */
+.dia-calendario {
+    min-height: 105px;
+    aspect-ratio: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    padding: 7px;
+    box-sizing: border-box;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.dia-calendario:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,.08);
+}
+
+.dia-numero {
+    align-self: center;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.dia-hoje .dia-numero {
+    color: white;
+}
+
+.tarefas-do-dia {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.tarefa-calendario {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 7px;
+    background: #667eea;
+    color: white;
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tarefa-calendario.urg-alta {
+    background: #dc2626;
+}
+
+.tarefa-calendario.urg-media {
+    background: #f59e0b;
+}
+
+.tarefa-calendario.urg-baixa {
+    background: #10b981;
+}
+
+.tarefa-calendario.urg-não-definida {
+    background: #9ca3af;
+}
+
+.tarefa-calendario.concluida-calendario {
+    opacity: .65;
+    text-decoration: none;
+}
+
+.tarefa-mais-calendario {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 7px;
+    background: #e9ecf7;
+    color: #667eea;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.dia-hoje .tarefa-mais-calendario {
+    background: rgba(255,255,255,.88);
+}
+
+/* ===== MODAL DAS TAREFAS DO DIA ===== */
+.modal-dia-calendario {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    z-index: 2000;
+    box-sizing: border-box;
+}
+
+.modal-dia-calendario.aberto {
+    display: flex;
+}
+
+.conteudo-dia-calendario {
+    width: min(620px, 100%);
+    max-height: 82vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 24px;
+    padding: 22px;
+    box-sizing: border-box;
+    box-shadow: 0 12px 35px rgba(0,0,0,.25);
+}
+
+.cabecalho-dia-calendario {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.cabecalho-dia-calendario h2 {
+    margin: 0;
+    color: #333;
+    font-size: 22px;
+}
+
+.fechar-dia-calendario {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #e93636;
+    color: white;
+    font-size: 24px;
+}
+
+.lista-dia-calendario {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aviso-dia-calendario {
+    padding: 22px;
+    border-radius: 16px;
+    background: #f5f6fa;
+    color: #667eea;
+    text-align: center;
+    font-weight: bold;
+}
+
+body.tema-escuro .conteudo-dia-calendario {
+    background: #000;
+}
+
+body.tema-escuro .cabecalho-dia-calendario h2 {
+    color: white;
+}
+
+body.tema-escuro .aviso-dia-calendario {
+    background: #111;
+    color: #8b9cf7;
+}
+
+body.tema-escuro .tarefa-mais-calendario {
+    background: #222;
+    color: #8b9cf7;
+}
+
+@media (max-width: 600px) {
+    .dia-calendario {
+        min-height: 92px;
+        padding: 5px;
+    }
+
+    .dia-numero {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .tarefa-calendario,
+    .tarefa-mais-calendario {
+        font-size: 9px;
+        padding: 3px 4px;
+    }
+
+    .conteudo-dia-calendario {
+        padding: 18px;
+        border-radius: 20px;
+    }
+}
+
+
+/* ===== AJUSTES FINAIS DO MODAL DE TAREFA ===== */
+.modal-tarefa,
+.modal,
+#taskModal,
+#modalTarefa {
+    padding-bottom: 110px !important;
+    box-sizing: border-box;
+}
+
+.modal-tarefa > div,
+.modal > div,
+#taskModal > div,
+#modalTarefa > div {
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+/* 2) Quando uma tarefa estiver concluída, o risco atravessa
+      o cartão/retângulo inteiro, e não somente o nome. */
+.tarefa-calendario.concluida-calendario {
+    position: relative;
+    text-decoration: none;
+}
+
+.tarefa-calendario.concluida-calendario::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: currentColor;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+
+/* ===== MODAL NOVA TAREFA: BOTÕES SEMPRE ACESSÍVEIS ===== */
+.modal-nova-tarefa {
+    z-index: 5000 !important;
+    padding: 16px !important;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.modal-nova-tarefa .conteudo-modal {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 750px) {
+    .modal-nova-tarefa .conteudo-modal {
+        max-height: calc(100vh - 24px);
+        padding: 22px 20px;
+    }
+}
+
+
+/* ===== TAREFA CONCLUÍDA: RISCO NO RETÂNGULO INTEIRO ===== */
+.tarefa {
+    position: relative;
+    overflow: hidden;
+}
+
+.tarefa.concluida .nome {
+    text-decoration: none;
+}
+
+.tarefa.concluida::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: #666;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Mantém o risco do cartão do calendário atravessando a etiqueta inteira. */
+.tarefa-calendario.concluida-calendario {
+    position: relative;
+    text-decoration: none;
+}
+
+.tarefa-calendario.concluida-calendario::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: currentColor;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 3;
+}
+
+
+/* ===== PÁGINA DE HORÁRIO DE AULAS ===== */
+.pagina-horario {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 72px;
+    overflow-y: auto;
+    padding: 18px;
+    box-sizing: border-box;
+    z-index: 5;
+}
+
+body.modo-horario .pagina-horario {
+    display: block;
+}
+
+body.modo-horario .contadores,
+body.modo-horario .card,
+body.modo-horario .card-pomodoro,
+body.modo-horario .pagina-calendario {
+    display: none !important;
+}
+
+.horario-pagina-card {
+    background: white;
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+.horario-pagina-titulo {
+    color: #667eea;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    margin: 5px 0 22px;
+}
+
+.imagem-horario-pagina {
+    width: 100%;
+    border-radius: 10px;
+    border: 2px solid #667eea;
+    object-fit: contain;
+    display: none;
+    margin-bottom: 15px;
+}
+
+.sem-foto-pagina {
+    text-align: center;
+    color: #999;
+    padding: 20px 10px 25px;
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.5;
+}
+
+.btn-foto-pagina {
+    background: #38a169;
+    color: white;
+    font-size: 17px;
+    padding: 14px;
+    border-radius: 12px;
+    width: 100%;
+}
+
+.btn-apagar-foto-pagina {
+    background: #e53e3e;
+    color: white;
+    font-size: 17px;
+    padding: 14px;
+    border-radius: 12px;
+    width: 100%;
+    display: none;
+    margin-top: 10px;
+}
+
+body.tema-escuro .horario-pagina-card {
+    background: #111;
+}
+
+body.tema-escuro .sem-foto-pagina {
+    color: #aaa;
+}
+
+
+/* ===== PÁGINA DE HORÁRIOS ===== */
+.pagina-horarios {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 72px;
+    overflow-y: auto;
+    padding: 18px;
+    box-sizing: border-box;
+    z-index: 5;
+}
+
+body.modo-horarios .pagina-horarios {
+    display: block;
+}
+
+body.modo-horarios .contadores,
+body.modo-horarios .card,
+body.modo-horarios .card-pomodoro {
+    display: none !important;
+}
+
+body.modo-horarios .pagina-horarios .card {
+    display: block !important;
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+body.modo-horarios .pagina-calendario {
+    display: none !important;
+}
+
+
+
+/* =========================================================
+   PROFESSIONAL UI REFRESH — preserva estrutura e funcionalidades
+   ========================================================= */
+:root {
+    --ui-primary: #5b6fe8;
+    --ui-primary-strong: #485bd1;
+    --ui-success: #22a06b;
+    --ui-warning: #e59b22;
+    --ui-danger: #e24a4a;
+    --ui-text: #172033;
+    --ui-muted: #6f7890;
+    --ui-surface: rgba(255,255,255,.96);
+    --ui-surface-soft: #f6f8fc;
+    --ui-border: rgba(32,44,72,.10);
+    --ui-shadow: 0 10px 30px rgba(29,38,66,.10);
+    --ui-shadow-lg: 0 24px 70px rgba(18,25,48,.24);
+    --ui-radius: 20px;
+}
+
+* {
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    background: linear-gradient(145deg, #5269df 0%, #6a60d6 46%, #7651b5 100%);
+    color: var(--ui-text);
+    padding-left: 18px;
+    padding-right: 18px;
+    padding-top: 108px;
+}
+
+button, input, select { outline: none; }
+button { transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background .16s ease; }
+button:active { transform: scale(.98); }
+button:focus-visible, input:focus-visible, select:focus-visible {
+    box-shadow: 0 0 0 4px rgba(91,111,232,.18);
+}
+
+.barra-topo {
+    height: 82px;
+    padding: 0 max(20px, calc((100vw - 600px)/2 + 18px));
+    background: rgba(68,74,153,.30);
+    border-bottom: 1px solid rgba(255,255,255,.16);
+    backdrop-filter: blur(20px) saturate(145%);
+    -webkit-backdrop-filter: blur(20px) saturate(145%);
+    box-shadow: 0 8px 30px rgba(22,29,73,.10);
+}
+
+.titulo-topo {
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -.25px;
+    text-shadow: 0 1px 8px rgba(0,0,0,.10);
+}
+
+.botao-menu, .botao-mais {
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    border-radius: 15px;
+    color: #38405a;
+    background: rgba(255,255,255,.94);
+    border: 1px solid rgba(255,255,255,.65);
+    box-shadow: 0 8px 20px rgba(25,34,75,.15);
+}
+.botao-menu:hover, .botao-mais:hover { box-shadow: 0 10px 24px rgba(25,34,75,.20); transform: translateY(-1px); }
+
+.contadores { gap: 10px; margin: 5px 0 18px; }
+.contador {
+    padding: 15px 8px 14px;
+    border-radius: 18px;
+    background: var(--ui-surface);
+    border: 1px solid rgba(255,255,255,.58);
+    box-shadow: var(--ui-shadow);
+    color: var(--ui-muted);
+    font-size: 12px;
+    font-weight: 650;
+}
+.contador span { font-size: 25px; letter-spacing: -.6px; margin-bottom: 3px; }
+.contador.pend span { color: var(--ui-primary); }
+.contador.conc span { color: var(--ui-success); }
+.contador.porc span { color: var(--ui-warning); }
+
+.card, .card-pomodoro, .calendario-card, .horario-pagina-card {
+    border-radius: var(--ui-radius);
+    background: var(--ui-surface);
+    border: 1px solid rgba(255,255,255,.62);
+    box-shadow: var(--ui-shadow);
+}
+.card { padding: 21px 18px; margin-bottom: 15px; }
+.card h3 { letter-spacing: -.25px; }
+
+label {
+    margin: 16px 0 7px;
+    color: #3d465d;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+input, select {
+    min-height: 50px;
+    padding: 13px 14px;
+    border: 1px solid #dfe4ef;
+    border-radius: 13px;
+    font-size: 16px;
+    color: #222b3e;
+    background: #f7f8fb;
+    transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+input:hover, select:hover { background: #fff; border-color: #cbd3e4; }
+input:focus, select:focus { background: #fff; border-color: var(--ui-primary); }
+
+button {
+    border-radius: 13px;
+    font-size: 16px;
+    font-weight: 720;
+}
+.btn-salvar { background: linear-gradient(135deg, var(--ui-primary), var(--ui-primary-strong)); box-shadow: 0 8px 18px rgba(91,111,232,.24); }
+.btn-fechar, .btn-del, .btn-apagar-foto, .btn-apagar-foto-pagina { background: #ec5757; }
+.btn-foto, .btn-foto-pagina { background: #2ca574; }
+
+.tarefa {
+    margin: 9px 0;
+    padding: 14px 14px;
+    border-radius: 14px;
+    background: #f8f9fc;
+    border-top: 1px solid #eef1f6;
+    border-right: 1px solid #eef1f6;
+    border-bottom: 1px solid #eef1f6;
+    border-left-width: 4px;
+    box-shadow: 0 4px 12px rgba(27,35,58,.04);
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.tarefa:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(27,35,58,.07); background: #fff; }
+.nome { color: #20283a; font-size: 15px; line-height: 1.35; }
+.tipo { color: var(--ui-primary); font-size: 12px; letter-spacing: .12px; text-transform: none; }
+.data, .hora-lembrete, .data-conclusao { font-size: 12px; line-height: 1.4; }
+input[type="checkbox"] { width: 21px; height: 21px; accent-color: var(--ui-success); }
+
+.cabecalho-concluidas { font-size: 16px; color: var(--ui-success); }
+.vazio { font-size: 14px; color: #8b93a7; padding: 26px 14px; }
+
+.modal-nova-tarefa, .modal-menu, .modal-dia-calendario, .color-modal {
+    background: rgba(14,20,38,.62);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+.conteudo-modal, .conteudo-menu, .conteudo-dia-calendario, .color-box {
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,.7);
+    box-shadow: var(--ui-shadow-lg);
+}
+.conteudo-modal { padding: 25px 22px; }
+.conteudo-modal h2, .titulo-menu, .color-box h2 { letter-spacing: -.5px; color: var(--ui-text); }
+.conteudo-modal h2 { font-size: 23px; }
+.titulo-menu { font-size: 24px; font-weight: 760; }
+
+.conteudo-menu { max-width: 430px; padding: 23px 20px; }
+.buscar-menu { height: 50px; font-size: 16px; border-width: 1px; border-radius: 13px; }
+.botao-menu-item {
+    height: 50px;
+    border-radius: 13px;
+    font-size: 15px;
+    margin-bottom: 9px;
+    justify-content: flex-start;
+    padding: 0 16px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.botao-menu-item:hover { filter: brightness(1.03); transform: translateY(-1px); }
+.menu-tema { background: #d99023; }
+.menu-cor { background: #7660d7; }
+.menu-exportar { background: #5b71d8; }
+.menu-importar { background: #27815c; }
+.menu-pomodoro { background: #ce4c8d; }
+.menu-fechar { background: #d94c4c; justify-content: center; }
+
+.card-pomodoro { padding: 22px 18px; }
+.card-pomodoro h3 { font-size: 20px; }
+.cronometro { font-size: 46px; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; }
+.btn-pom { border-radius: 12px; }
+
+.barra-inferior {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    height: 66px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: rgba(255,255,255,.94);
+    border: 1px solid rgba(255,255,255,.7);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 10px 35px rgba(21,28,55,.18);
+}
+.nav-item {
+    color: #7c8499;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 3px;
+    border-radius: 0;
+}
+.nav-icone { font-size: 22px; transition: transform .16s ease; }
+.nav-item.ativo { color: var(--ui-primary); background: rgba(91,111,232,.075); }
+.nav-item.ativo .nav-icone { transform: translateY(-1px); }
+body { padding-bottom: 92px; }
+
+.pagina-calendario, .pagina-horario, .pagina-horarios {
+    top: 82px;
+    bottom: 82px;
+    padding: 20px 16px 26px;
+}
+.calendario-card, .horario-pagina-card { max-width: 650px; }
+.calendario-card { padding: 20px; }
+.calendario-cabecalho h2 { color: #242d40; font-size: 20px; letter-spacing: -.35px; }
+.calendario-seta {
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 12px;
+    background: var(--ui-primary);
+    font-size: 23px;
+}
+.calendario-semana div { color: #7a8296; font-size: 10px; letter-spacing: .4px; }
+.dia-calendario {
+    border-radius: 12px;
+    background: #f5f7fb;
+    border: 1px solid #eef1f6;
+    color: #2f374b;
+}
+.dia-hoje { background: linear-gradient(145deg, var(--ui-primary), #7283ee); border-color: transparent; box-shadow: 0 7px 18px rgba(91,111,232,.25); }
+.tarefa-calendario { border-radius: 6px; }
+
+.horario-pagina-titulo, .horario-titulo { color: var(--ui-primary); letter-spacing: -.3px; }
+.imagem-horario, .imagem-horario-pagina { border: 1px solid rgba(91,111,232,.25); border-radius: 14px; }
+
+/* dark theme refinements */
+body.tema-escuro {
+    --ui-text: #f4f6fb;
+    --ui-muted: #9ba4b9;
+    --ui-surface: rgba(14,18,27,.96);
+    --ui-surface-soft: #151a24;
+    --ui-border: rgba(255,255,255,.09);
+}
+body.tema-escuro .card,
+body.tema-escuro .contador,
+body.tema-escuro .card-pomodoro,
+body.tema-escuro .calendario-card,
+body.tema-escuro .horario-pagina-card { background: rgba(10,13,20,.95); border-color: rgba(255,255,255,.08); }
+body.tema-escuro .tarefa { background: #121722; border-top-color:#202737; border-right-color:#202737; border-bottom-color:#202737; }
+body.tema-escuro .tarefa:hover { background:#171d29; }
+body.tema-escuro .conteudo-modal,
+body.tema-escuro .conteudo-menu,
+body.tema-escuro .conteudo-dia-calendario,
+body.tema-escuro .color-box { background: #0d1119; border-color: rgba(255,255,255,.09); }
+body.tema-escuro input, body.tema-escuro select, body.tema-escuro .buscar-menu { background:#151a24; border-color:#293142; }
+body.tema-escuro .barra-inferior { background: rgba(10,13,20,.95); border-color: rgba(255,255,255,.09); }
+body.tema-escuro .nav-item.ativo { background: rgba(139,156,247,.10); }
+body.tema-escuro .dia-calendario { background:#151a24; border-color:#222a39; }
+body.tema-escuro .dia-hoje { background: linear-gradient(145deg, #6577e8, #7d8af0); }
+
+@media (max-width: 500px) {
+    body { padding-left: 14px; padding-right: 14px; padding-top: 99px; }
+    .barra-topo { height: 76px; padding: 0 16px; }
+    .botao-menu, .botao-mais { width: 44px; height: 44px; border-radius: 14px; }
+    .titulo-topo { font-size: 17px; }
+    .contadores { gap: 8px; }
+    .contador { padding: 13px 5px 12px; border-radius: 15px; font-size: 10px; }
+    .contador span { font-size: 22px; }
+    .card { padding: 18px 15px; border-radius: 18px; }
+    .conteudo-modal { padding: 22px 18px; border-radius: 22px; }
+    .conteudo-menu { padding: 20px 17px; border-radius: 22px; }
+    .barra-inferior { left: 8px; right: 8px; bottom: 8px; height: 64px; border-radius: 18px; }
+    .pagina-calendario, .pagina-horario, .pagina-horarios { top: 76px; bottom: 78px; padding: 14px 10px 22px; }
+    .calendario-card { padding: 13px; border-radius: 18px; }
+    .dia-calendario { min-height: 82px; }
+}
+
+
+
+/* ===== FUNDO PREMIUM / PROFISSIONAL ===== */
+html {
+    background: #eef2ff;
+}
+body {
+    position: relative;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 12% 8%, rgba(255,255,255,.42) 0 7%, transparent 24%),
+        radial-gradient(circle at 88% 18%, rgba(139,92,246,.24) 0 8%, transparent 28%),
+        radial-gradient(circle at 72% 78%, rgba(59,130,246,.20) 0 7%, transparent 30%),
+        linear-gradient(145deg, #5268d9 0%, #6556c9 43%, #734ca8 100%);
+    background-attachment: fixed;
+}
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 999px;
+    filter: blur(2px);
+}
+body::before {
+    width: 330px;
+    height: 330px;
+    top: -120px;
+    left: -145px;
+    background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.035));
+    border: 1px solid rgba(255,255,255,.13);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
+}
+body::after {
+    width: 410px;
+    height: 410px;
+    right: -230px;
+    bottom: 70px;
+    background: linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.018));
+    border: 1px solid rgba(255,255,255,.08);
+}
+.barra-topo {
+    background: linear-gradient(180deg, rgba(55,48,130,.48), rgba(74,63,157,.22));
+    border-bottom: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 10px 30px rgba(25,22,75,.10);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+/* Mantém a personalização de cor, mas com acabamento mais sofisticado. */
+body[style*="background"] {
+    background-blend-mode: soft-light, normal;
+}
+body.tema-escuro {
+    background:
+        radial-gradient(circle at 15% 10%, rgba(99,102,241,.20), transparent 28%),
+        radial-gradient(circle at 85% 80%, rgba(124,58,237,.16), transparent 30%),
+        linear-gradient(145deg, #111426 0%, #17152d 48%, #20142c 100%) !important;
+    background-attachment: fixed !important;
+}
+body.tema-escuro::before {
+    background: linear-gradient(135deg, rgba(129,140,248,.10), rgba(255,255,255,.01));
+    border-color: rgba(255,255,255,.06);
+}
+body.tema-escuro::after {
+    background: linear-gradient(135deg, rgba(168,85,247,.08), rgba(255,255,255,.01));
+    border-color: rgba(255,255,255,.045);
+}
+
+
+
+/* ===== DESIGN SYSTEM PRO 2.0 ===== */
+:root {
+    --app-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --pro-primary: #6674e8;
+    --pro-primary-strong: #5363dc;
+    --pro-primary-soft: rgba(102,116,232,.12);
+    --pro-text: #20283a;
+    --pro-text-2: #687187;
+    --pro-text-3: #98a0b2;
+    --pro-surface: rgba(255,255,255,.94);
+    --pro-surface-solid: #ffffff;
+    --pro-surface-2: #f7f8fc;
+    --pro-border: rgba(31,41,55,.08);
+    --pro-shadow-sm: 0 4px 14px rgba(27,33,62,.06);
+    --pro-shadow-md: 0 12px 30px rgba(27,33,62,.10);
+    --pro-shadow-lg: 0 22px 60px rgba(20,25,55,.18);
+    --pro-radius-sm: 12px;
+    --pro-radius-md: 18px;
+    --pro-radius-lg: 24px;
+    --pro-ease: cubic-bezier(.2,.8,.2,1);
+}
+* { font-family: var(--app-font); }
+html { scroll-behavior: smooth; }
+body { color: var(--pro-text); }
+button, input, select { font-family: inherit; }
+button { -webkit-tap-highlight-color: transparent; transition: transform .16s var(--pro-ease), box-shadow .2s var(--pro-ease), background .2s ease, color .2s ease, opacity .2s ease; }
+button:active { transform: scale(.975); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(102,116,232,.22); outline-offset: 2px; }
+
+/* topo / marca */
+.barra-topo { height: 78px; padding: 0 20px; }
+.titulo-topo { gap: 10px; font-size: 18px; font-weight: 720; letter-spacing: -.35px; text-shadow: 0 1px 8px rgba(24,27,66,.14); }
+.brand-mark { width: 31px; height: 31px; display:grid; place-items:center; border-radius: 10px; background: rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+.brand-mark svg { width: 17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.botao-menu, .botao-mais { width:44px; height:44px; min-width:44px; padding:0; margin:0; border-radius:14px; font-size:20px; box-shadow: 0 6px 16px rgba(24,29,72,.10), inset 0 1px 0 rgba(255,255,255,.65); border:1px solid rgba(255,255,255,.42); }
+.botao-mais { font-size:26px; color:var(--pro-primary-strong); }
+.botao-mais:hover { transform: translateY(-1px); box-shadow:0 10px 22px rgba(24,29,72,.14); }
+
+/* contadores */
+.contadores { gap:10px; margin: 8px 0 18px; }
+.contador { position:relative; overflow:hidden; border:1px solid var(--pro-border); box-shadow:var(--pro-shadow-sm); border-radius:17px; padding:15px 8px 13px; background:var(--pro-surface); backdrop-filter: blur(16px); }
+.contador::before { content:""; position:absolute; left:14px; right:14px; top:0; height:2px; border-radius:0 0 99px 99px; background:currentColor; opacity:.38; }
+.contador span { font-size:25px; letter-spacing:-.8px; margin-bottom:3px; }
+
+/* cards */
+.card, .card-pomodoro, .calendario-card, .horario-pagina-card { border:1px solid var(--pro-border); box-shadow:var(--pro-shadow-md); background:var(--pro-surface); backdrop-filter:blur(18px); }
+.card { border-radius:var(--pro-radius-lg); padding:21px 18px; margin-bottom:16px; }
+.card h3 { letter-spacing:-.35px; }
+
+/* tarefas */
+.tarefa { border:1px solid #edf0f5; border-left-width:4px; border-radius:15px; background:linear-gradient(180deg,#fff,#fafbfe); padding:14px 14px 14px 13px; gap:12px; box-shadow:0 3px 11px rgba(26,34,61,.045); transition:transform .18s var(--pro-ease), box-shadow .18s var(--pro-ease), background .18s ease; }
+.tarefa:hover { transform:translateY(-1px); box-shadow:0 8px 18px rgba(26,34,61,.075); background:#fff; }
+.nome { font-size:15px; line-height:1.35; letter-spacing:-.1px; color:var(--pro-text); }
+.tipo { display:inline-flex; width:auto; align-items:center; margin-bottom:6px; padding:3px 8px; border-radius:999px; background:var(--pro-primary-soft); color:var(--pro-primary-strong); font-size:10px; line-height:1.35; letter-spacing:.25px; text-transform:uppercase; }
+.data,.hora-lembrete,.data-conclusao { font-size:12px; color:var(--pro-text-2); line-height:1.45; }
+input[type="checkbox"] { width:20px; height:20px; border-radius:6px; accent-color:var(--pro-primary); }
+.tarefa.concluida { opacity:.64; filter:saturate(.65); }
+.tarefa.concluida::after { height:1px; opacity:.55; }
+
+/* formulário */
+label { margin:16px 0 7px; color:#4f596e; font-size:13px; font-weight:650; letter-spacing:.05px; }
+input, select { min-height:50px; padding:13px 14px; border:1px solid #e1e5ed; border-radius:14px; background:#f8f9fc; color:var(--pro-text); font-size:15px; transition:border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+input:hover, select:hover { border-color:#d4d9e5; }
+input:focus, select:focus { border-color:rgba(102,116,232,.55); background:#fff; box-shadow:0 0 0 4px rgba(102,116,232,.09); outline:none; }
+
+/* botões */
+.btn-salvar, .btn-fechar, .btn-del, .btn-foto, .btn-foto-pagina, .btn-apagar-foto-pagina, .btn-apagar-foto { border-radius:14px; min-height:48px; font-size:14px; letter-spacing:.05px; box-shadow:none; }
+.btn-salvar { background:linear-gradient(135deg,var(--pro-primary),var(--pro-primary-strong)); box-shadow:0 8px 18px rgba(83,99,220,.22); }
+.btn-fechar, .btn-del, .btn-apagar-foto-pagina, .btn-apagar-foto { background:#fff1f2; color:#c83a47; border:1px solid #ffe0e3; }
+.btn-foto, .btn-foto-pagina { background:#ecfdf5; color:#18845d; border:1px solid #d7f8e8; }
+
+/* modais como sheets no mobile, cards no desktop */
+.modal-nova-tarefa, .modal-menu, .modal-dia-calendario, .color-modal { background:rgba(13,18,31,.48); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+.conteudo-modal, .conteudo-menu, .conteudo-dia-calendario, .color-box { border:1px solid rgba(255,255,255,.55); box-shadow:var(--pro-shadow-lg); animation:proModalIn .22s var(--pro-ease); }
+@keyframes proModalIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
+.conteudo-modal h2, .titulo-menu, .cabecalho-dia-calendario h2 { letter-spacing:-.65px; font-weight:740; }
+.buscar-menu { min-height:52px; height:auto; font-size:15px; }
+.botao-menu-item { min-height:50px; height:auto; border-radius:14px; font-size:14px; letter-spacing:.05px; margin-bottom:9px; box-shadow:none; }
+
+/* navegação inferior */
+.barra-inferior { left:50%; right:auto; transform:translateX(-50%); bottom:12px; width:min(560px,calc(100% - 24px)); height:66px; border-radius:21px; padding:6px; gap:3px; border:1px solid rgba(255,255,255,.58); background:rgba(255,255,255,.91); box-shadow:0 14px 38px rgba(24,29,62,.16), inset 0 1px 0 rgba(255,255,255,.75); backdrop-filter:blur(22px) saturate(150%); }
+.nav-item { position:relative; height:54px; border-radius:15px; gap:3px; color:#858da1; font-size:10px; letter-spacing:.1px; transition:color .2s ease, background .2s ease, transform .16s ease; }
+.nav-icone { width:22px; height:22px; display:grid; place-items:center; font-size:0; }
+.nav-icone svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.nav-item.ativo { color:var(--pro-primary-strong); background:rgba(102,116,232,.10); }
+.nav-item.ativo::after { content:""; position:absolute; bottom:3px; width:18px; height:2px; border-radius:99px; background:currentColor; opacity:.72; }
+
+/* calendário */
+.calendario-card { border-radius:var(--pro-radius-lg); }
+.calendario-seta { box-shadow:0 7px 16px rgba(83,99,220,.18); }
+.dia-calendario { border-color:#edf0f5; background:rgba(248,249,252,.86); transition:transform .16s var(--pro-ease), box-shadow .16s ease, border-color .16s ease; }
+.dia-calendario:hover { border-color:#dfe3ed; box-shadow:0 5px 14px rgba(30,38,66,.07); }
+.dia-hoje { box-shadow:0 8px 20px rgba(83,99,220,.25); }
+.tarefa-calendario { box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+
+/* pomodoro */
+.card-pomodoro { border-radius:var(--pro-radius-lg); }
+.cronometro { font-variant-numeric:tabular-nums; letter-spacing:-2px; }
+.instrucao-pomodoro { border:1px solid rgba(236,72,153,.10); }
+.btn-pom { min-height:42px; border-radius:12px; font-size:13px; box-shadow:none; }
+
+/* estados vazios */
+.vazio, .sem-foto, .sem-foto-pagina { border:1px dashed rgba(123,132,153,.22); border-radius:16px; background:rgba(248,249,252,.55); color:#929aab; font-style:normal; line-height:1.55; }
+
+/* dark mode premium */
+body.tema-escuro {
+    --pro-text:#f0f3f9; --pro-text-2:#a4adbf; --pro-text-3:#778197;
+    --pro-surface:rgba(18,23,34,.94); --pro-surface-solid:#121722; --pro-surface-2:#171d29;
+    --pro-border:rgba(255,255,255,.075); --pro-primary-soft:rgba(139,156,247,.13);
+}
+body.tema-escuro .card, body.tema-escuro .contador, body.tema-escuro .card-pomodoro, body.tema-escuro .calendario-card, body.tema-escuro .horario-pagina-card { background:rgba(17,22,33,.91); border-color:rgba(255,255,255,.07); box-shadow:0 14px 36px rgba(0,0,0,.20); }
+body.tema-escuro .tarefa { background:linear-gradient(180deg,#171d29,#141923); border-top-color:#252c3a; border-right-color:#252c3a; border-bottom-color:#252c3a; }
+body.tema-escuro .tarefa:hover { background:#1a202c; }
+body.tema-escuro .nome { color:#eef1f7; }
+body.tema-escuro .tipo { background:rgba(139,156,247,.13); color:#aeb9ff; }
+body.tema-escuro label { color:#b3bbca; }
+body.tema-escuro input, body.tema-escuro select, body.tema-escuro .buscar-menu { background:#171d29; border-color:#2a3241; color:#eef1f7; }
+body.tema-escuro input:focus, body.tema-escuro select:focus { background:#1a202c; border-color:#6979e8; box-shadow:0 0 0 4px rgba(105,121,232,.12); }
+body.tema-escuro .barra-inferior { background:rgba(16,21,31,.90); border-color:rgba(255,255,255,.075); box-shadow:0 16px 42px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.04); }
+body.tema-escuro .nav-item { color:#7f899e; }
+body.tema-escuro .nav-item.ativo { color:#a9b4ff; background:rgba(139,156,247,.12); }
+body.tema-escuro .vazio, body.tema-escuro .sem-foto, body.tema-escuro .sem-foto-pagina { background:rgba(255,255,255,.025); border-color:rgba(255,255,255,.075); color:#7f899e; }
+body.tema-escuro .btn-fechar, body.tema-escuro .btn-del, body.tema-escuro .btn-apagar-foto-pagina, body.tema-escuro .btn-apagar-foto { background:rgba(239,68,68,.11); color:#ff929b; border-color:rgba(239,68,68,.16); }
+body.tema-escuro .btn-foto, body.tema-escuro .btn-foto-pagina { background:rgba(16,185,129,.10); color:#70dfb5; border-color:rgba(16,185,129,.16); }
+
+/* refinamentos para telas menores */
+@media (max-width: 560px) {
+    body { padding-top:96px; padding-left:13px; padding-right:13px; padding-bottom:91px; }
+    .barra-topo { height:74px; padding:0 14px; }
+    .titulo-topo { font-size:16px; gap:8px; }
+    .brand-mark { width:29px; height:29px; border-radius:9px; }
+    .botao-menu,.botao-mais { width:42px; height:42px; min-width:42px; border-radius:13px; }
+    .contadores { gap:7px; }
+    .contador { padding:13px 5px 11px; border-radius:15px; }
+    .contador span { font-size:22px; }
+    .card { padding:18px 15px; border-radius:20px; }
+    .tarefa { border-radius:14px; padding:13px 12px; }
+    .barra-inferior { bottom:8px; width:calc(100% - 16px); height:64px; border-radius:19px; }
+    .nav-item { height:52px; border-radius:14px; }
+    .modal-nova-tarefa, .modal-menu { align-items:flex-end; padding:0 !important; }
+    .conteudo-modal, .conteudo-menu { width:100%; max-width:none; max-height:88vh; border-radius:24px 24px 0 0; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); border-bottom:0; animation:proSheetIn .25s var(--pro-ease); }
+    @keyframes proSheetIn { from { opacity:.75; transform:translateY(40px); } to { opacity:1; transform:none; } }
+    .conteudo-modal::before, .conteudo-menu::before { content:""; display:block; width:38px; height:4px; border-radius:99px; background:#d7dbe4; margin:-8px auto 14px; }
+    body.tema-escuro .conteudo-modal::before, body.tema-escuro .conteudo-menu::before { background:#394152; }
+    .pagina-calendario,.pagina-horario,.pagina-horarios { top:74px; bottom:76px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+
+
+/* ===== CORREÇÃO ISOLADA: MENU FLUTUANTE NO CELULAR ===== */
+/* Mantém o menu acima da navegação inferior e garante rolagem interna. */
+.modal-menu {
+    z-index: 6000 !important;
+}
+
+.modal-menu .conteudo-menu {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 560px) {
+    .modal-menu {
+        align-items: flex-end;
+        padding: 0 !important;
+    }
+
+    .modal-menu .conteudo-menu {
+        width: 100%;
+        max-width: none;
+        max-height: calc(100dvh - 18px);
+        overflow-y: auto;
+        border-radius: 24px 24px 0 0;
+        padding: 22px 18px max(24px, calc(18px + env(safe-area-inset-bottom)));
+        box-sizing: border-box;
+    }
+}
+
+
+
+/* ===== RECURSOS TRANSFERIDOS: BUSCA, PRÓXIMO DIA E AÇÕES DA TAREFA ===== */
+.busca-tarefas-card,.aviso-proximo-dia{margin-bottom:16px;}
+.busca-tarefas-card h3,.aviso-proximo-dia h3{margin:0 0 12px;font-size:17px;color:var(--pro-text,#222);}
+#buscaPrincipal{width:100%;margin:0;}
+.filtros-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.filtros-chips::-webkit-scrollbar{display:none;}
+.chip-filtro{width:auto;white-space:nowrap;margin:0;padding:9px 13px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(102,126,234,.09);color:var(--pro-primary,#667eea);border:1px solid rgba(102,126,234,.12);box-shadow:none;}
+.chip-filtro.ativo{background:var(--pro-primary,#667eea);color:#fff;border-color:transparent;}
+body.tema-escuro .chip-filtro{background:rgba(139,156,247,.12);color:#aebaff;border-color:rgba(139,156,247,.16);}
+body.tema-escuro .chip-filtro.ativo{background:var(--pro-primary,#667eea);color:#fff;}
+.aviso-proximo-dia{padding:16px 18px;}
+.aviso-proximo-dia .resumo-proximo-dia{font-size:14px;line-height:1.45;color:var(--pro-muted,#667085);}
+.aviso-proximo-dia .lista-proximo-dia{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.aviso-proximo-dia .item-proximo-dia{padding:9px 11px;border-radius:12px;background:rgba(102,126,234,.08);font-size:13px;color:var(--pro-text,#222);}
+.aviso-proximo-dia .item-proximo-dia strong{display:block;margin-bottom:2px;}
+.acoes-tarefa{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px;position:relative;z-index:5;}
+.acoes-tarefa button{width:auto;margin:0;padding:8px 10px;border-radius:10px;font-size:12px;font-weight:700;background:var(--pro-primary,#667eea);color:#fff;}
+.acoes-tarefa .perigo{background:#e5484d;}
+.tarefa.concluida .acoes-tarefa{position:relative;z-index:5;}
+body.tema-escuro .busca-tarefas-card h3,body.tema-escuro .aviso-proximo-dia h3,body.tema-escuro .aviso-proximo-dia .item-proximo-dia{color:#f7f8fb;}
+body.tema-escuro .aviso-proximo-dia .resumo-proximo-dia{color:#aeb5c2;}
+body.tema-escuro .aviso-proximo-dia .item-proximo-dia{background:rgba(139,156,247,.12);}
+@media(max-width:560px){.acoes-tarefa button{font-size:11px;padding:7px 9px}.busca-tarefas-card,.aviso-proximo-dia{margin-bottom:14px;}}
+
+
+/* ===== CORREÇÃO: DIA ATUAL SEMPRE VISÍVEL ===== */
+.dia-calendario.dia-hoje {
+    background: linear-gradient(145deg, var(--ui-primary, #667eea), #7283ee) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+}
+.dia-calendario.dia-hoje .dia-numero {
+    color: #fff !important;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 2;
+}
+body.tema-escuro .dia-calendario.dia-hoje {
+    background: linear-gradient(145deg, #6577e8, #7d8af0) !important;
+}
+
+</style>
+</head>
+<body>
+
+    <div class="barra-topo">
+        <button class="botao-menu" id="botaoMenu">☰</button>
+        <div class="titulo-topo">
+            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.75A2.75 2.75 0 0 1 7.75 2H20v16H7.75A2.75 2.75 0 0 0 5 20.75V4.75Z"/><path d="M5 20.75A2.75 2.75 0 0 1 7.75 18H20v4H7.75A2.75 2.75 0 0 1 5 19.25V20.75Z"/></svg></span>
+            <span>Minhas Tarefas</span>
+        </div>
+        <button class="botao-mais" id="botaoMais">+</button>
+    </div>
+    <div class="modal-menu" id="modalMenu">
+
+    <div class="conteudo-menu">
+
+        <h2 class="titulo-menu">Menu</h2>
+
+        <input
+            type="text"
+            class="buscar-menu"
+            id="buscarTarefa"
+            placeholder="Buscar tarefa..."
+        >
+
+<button class="botao-menu-item menu-tema" id="btnTema">
+    🌙 / ☀️ &nbsp; Tema Claro/Escuro
+</button>
+
+        <button class="botao-menu-item menu-cor">
+            🎨 &nbsp; Escolher Cor de Fundo
+        </button>
+
+        <button
+    class="botao-menu-item menu-exportar"
+    id="btnExportar"
+>
+    📥 &nbsp; Exportar
+</button>
+
+<button
+    class="botao-menu-item menu-importar"
+    id="btnImportar"
+>
+    📤 &nbsp; Importar
+</button>
+
+<button class="botao-menu-item menu-pomodoro" id="abrirPomodoro">
+    ⏱️ &nbsp; Pomodoro
+</button>
+
+        <button
+            class="botao-menu-item menu-fechar"
+            id="btnFecharMenu"
+        >
+            Fechar
+        </button>
+
+    </div>
+
+</div>
+
+    <div class="modal-nova-tarefa" id="modalNovaTarefa">
+        <div class="conteudo-modal">
+          <input
+    type="file"
+    id="arquivoImportar"
+    accept=".json,application/json"
+    style="display:none;"
+>
+            <h2>Nova Tarefa</h2>
+            
+            <label>Tipo:</label>
+            <select id="tipoTarefa">
+                <option value="">Não definido</option>
+                <option value="Prova">📝 Prova</option>
+                <option value="Tarefa">📋 Tarefa</option>
+                <option value="Apresentação">🎤 Apresentação</option>
+                <option value="Trabalho">📄 Trabalho</option>
+                <option value="Exercício">✏️ Exercício</option>
+                <option value="Recuperação">🩹 Recuperação</option>
+            </select>
+
+            <label>Nome:</label>
+            <input type="text" id="nomeMateria" placeholder="Ex: Matemática">
+
+            <label>Urgência:</label>
+            <select id="urgenciaTarefa">
+                <option value="">Não definida</option>
+                <option value="alta">🔴 Alta</option>
+                <option value="media">🟡 Média</option>
+                <option value="baixa">🟢 Baixa</option>
+            </select>
+
+            <label>Data:</label>
+            <input type="date" id="dataTarefa">
+
+            <label>Hora:</label>
+            <input type="time" id="horaLembrete">
+
+            <button class="btn-salvar" id="btnSalvar">Salvar</button>
+            <button class="btn-fechar" id="btnFechar">Fechar</button>
+        </div>
+    </div>
+
+    <div class="contadores">
+        <div class="contador pend">
+            <span id="numPend">0</span>
+            Pendentes
+        </div>
+        <div class="contador conc">
+            <span id="numConc">0</span>
+            Concluídas
+        </div>
+        <div class="contador porc">
+            <span id="numPorc">0%</span>
+            Concluídas
+        </div>
+    </div>
+
+    <!-- ===== CARD DO POMODORO ===== -->
+<div class="card-pomodoro" id="cardPomodoro">
+
+    <h3>⏱️ Técnica Pomodoro</h3>
+
+    <!-- Botão Informações -->
+    <div class="btn-info" id="btnInfo">
+        ℹ️ Informações
+        <span class="seta-info">▼</span>
+    </div>
+
+    <!-- Informações fechadas inicialmente -->
+    <div class="instrucao-pomodoro" id="instrucaoPomodoro">
+        ✅ Ciclo padrão:
+        <strong>25 minutos de foco/estudo intenso</strong><br>
+
+        🧘 Depois:
+        <strong>5 minutos de descanso curto</strong><br>
+
+        Repita quantas vezes precisar!
+    </div>
+
+    <!-- Cronômetro -->
+    <div class="cronometro" id="cronometro">
+        25:00
+    </div>
+
+    <!-- Botões -->
+    <div class="botoes-pomodoro">
+
+        <button
+            class="btn-pom btn-iniciar"
+            id="btnIniciar">
+            Iniciar
+        </button>
+
+        <button
+            class="btn-pom btn-pausar"
+            id="btnPausar">
+            Pausar
+        </button>
+
+        <button
+            class="btn-pom btn-continuar"
+            id="btnContinuar">
+            Continuar
+        </button>
+
+        <button
+            class="btn-pom btn-zerar"
+            id="btnZerar">
+            Zerar
+        </button>
+
+    </div>
+
+</div>
+
+    <!-- ===== AVISO DO PRÓXIMO DIA ===== -->
+    <div class="card aviso-proximo-dia" id="avisoProximoDia">
+        <h3>📅 Próximo dia</h3>
+        <div class="resumo-proximo-dia" id="resumoProximoDia"></div>
+        <div class="lista-proximo-dia" id="listaProximoDia"></div>
+    </div>
+
+    <!-- ===== BUSCA DE TAREFAS ===== -->
+    <div class="card busca-tarefas-card">
+        <h3>🔎 Encontrar tarefas</h3>
+        <input type="search" id="buscaPrincipal" placeholder="Buscar tarefa..." autocomplete="off">
+        <div class="filtros-chips" id="filtrosChips">
+            <button class="chip-filtro ativo" data-filtro="todas" type="button">Todas</button>
+            <button class="chip-filtro" data-filtro="hoje" type="button">Hoje</button>
+            <button class="chip-filtro" data-filtro="amanha" type="button">Amanhã</button>
+            <button class="chip-filtro" data-filtro="atrasadas" type="button">Atrasadas</button>
+            <button class="chip-filtro" data-filtro="alta" type="button">Alta</button>
+            <button class="chip-filtro" data-filtro="provas" type="button">Provas</button>
+            <button class="chip-filtro" data-filtro="trabalhos" type="button">Trabalhos</button>
+        </div>
+    </div>
+  
+
+
+</div>
+
+    <div class="card">
+        <h3 style="color:#333; margin-bottom:15px; font-size:20px; font-weight:bold; display:flex; align-items:center; gap:8px;">⏳ Tarefas Pendentes</h3>
+        <div id="listaPendentes"><div class="vazio">Nenhuma tarefa pendente 😊</div></div>
+    </div>
+
+    <div class="card">
+        <div class="cabecalho-concluidas" onclick="toggleConcluidas()">
+            <span style="display:flex; align-items:center; gap:8px;">✅ Tarefas Concluídas</span>
+            <span class="seta">▼</span>
+        </div>
+        <div class="conteudo-concluidas" id="conteudoConcluidas">
+            <div id="listaConcluidas"><div class="vazio">Nenhuma tarefa concluída ainda</div></div>
+            <button class="btn-del" onclick="apagarTodasConcluidas()">🗑️ Apagar Todas Concluídas</button>
+        </div>
+    </div>
+
+    
+    
+    <!-- JANELA DE ESCOLHER COR -->
+<div id="colorModal" class="color-modal">
+
+    <div class="color-box">
+
+        <h2>🎨 Escolher Cor</h2>
+
+        <!-- Área principal -->
+        <div id="colorArea" class="color-area">
+            <div id="colorCursor" class="color-cursor"></div>
+        </div>
+
+        <!-- Barra de tonalidade -->
+        <div class="hue-container">
+            <input
+                type="range"
+                id="hueRange"
+                min="0"
+                max="360"
+                value="200"
+            >
+        </div>
+
+        <!-- Cor atual -->
+        <div class="color-preview">
+            <span>Cor selecionada:</span>
+            <div id="colorPreview"></div>
+            <span id="colorHex">#00BFFF</span>
+        </div>
+
+        <!-- Botões -->
+        <div class="color-actions">
+            <button id="cancelColor">Cancelar</button>
+            <button id="confirmColor">Confirmar</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ===== PÁGINA DO HORÁRIO DE AULAS ===== -->
+<div class="pagina-horario" id="paginaHorario">
+    <div class="horario-pagina-card">
+        <div class="horario-pagina-titulo">📚 Meu Horário de Aulas</div>
+
+        <img id="fotoHorarioPagina" class="imagem-horario-pagina" alt="Seu horário de aulas aparecerá aqui">
+        <div id="mensagemSemFotoPagina" class="sem-foto-pagina">
+            Nenhuma foto adicionada ainda 😔<br>
+            Clique no botão abaixo para colocar seu horário!
+        </div>
+
+        <button id="botaoFotoPagina" class="btn-foto-pagina" type="button">
+            📷 Selecionar minha foto do horário
+        </button>
+        <button id="botaoApagarFotoPagina" class="btn-apagar-foto-pagina" type="button">
+            🗑️ Excluir foto do horário
+        </button>
+    </div>
+</div>
+
+
+<!-- ===== PÁGINA DE HORÁRIOS ===== -->
+<div class="pagina-horarios" id="paginaHorarios">
+    <div class="card">
+        <h3 class="horario-titulo">📅 Meu Horário de Aulas</h3>
+
+        <img id="fotoHorario"
+             class="imagem-horario"
+             alt="Seu horário de aulas aparecerá aqui">
+
+        <div id="mensagemSemFoto" class="sem-foto">
+            Nenhuma foto adicionada ainda 😔<br>
+            Clique no botão abaixo para colocar seu horário!
+        </div>
+
+        <input type="file"
+               id="escolherFoto"
+               accept="image/*"
+               style="display:none;">
+
+        <button id="botaoFoto"
+                class="btn-foto"
+                type="button">
+            📷 Selecionar minha foto do horário
+        </button>
+
+        <button id="botaoApagarFoto"
+                class="btn-apagar-foto"
+                type="button">
+            🗑️ Excluir foto do horário
+        </button>
+    </div>
+</div>
+
+<!-- ===== PÁGINA DO CALENDÁRIO ===== -->
+<div class="pagina-calendario" id="paginaCalendario">
+    <div class="calendario-card">
+        <div class="calendario-cabecalho">
+            <button class="calendario-seta" id="mesAnterior" type="button">‹</button>
+            <h2 id="mesAtual"></h2>
+            <button class="calendario-seta" id="mesProximo" type="button">›</button>
+        </div>
+
+        <div class="calendario-semana">
+            <div>DOM</div>
+            <div>SEG</div>
+            <div>TER</div>
+            <div>QUA</div>
+            <div>QUI</div>
+            <div>SEX</div>
+            <div>SÁB</div>
+        </div>
+
+        <div class="calendario-dias" id="diasCalendario"></div>
+    </div>
+</div>
+
+
+<!-- ===== MODAL DAS TAREFAS DO DIA ===== -->
+<div class="modal-dia-calendario" id="modalDiaCalendario">
+    <div class="conteudo-dia-calendario">
+        <div class="cabecalho-dia-calendario">
+            <h2 id="tituloDiaCalendario">Tarefas do dia</h2>
+            <button class="fechar-dia-calendario" id="fecharDiaCalendario" type="button">×</button>
+        </div>
+
+        <div class="lista-dia-calendario" id="listaDiaCalendario"></div>
+    </div>
+</div>
+
+<!-- ===== BARRA INFERIOR ===== -->
+<div class="barra-inferior">
+    <button class="nav-item ativo" id="btnInicio" type="button">
+        <span class="nav-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 10.6 12 3l8.5 7.6v9.15A1.25 1.25 0 0 1 19.25 21H4.75a1.25 1.25 0 0 1-1.25-1.25V10.6Z"/><path d="M9 21v-6.5h6V21"/></svg></span>
+        <span>Início</span>
+    </button>
+
+    <button class="nav-item" id="btnCalendario" type="button">
+        <span class="nav-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></span>
+        <span>Calendário</span>
+    </button>
+<button class="nav-item" id="btnHorario" type="button">
+        <span class="nav-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H11v18H6.5A2.5 2.5 0 0 0 4 22V4.5Z"/><path d="M20 4.5A2.5 2.5 0 0 0 17.5 2H13v18h4.5A2.5 2.5 0 0 1 20 22V4.5Z"/></svg></span>
+        <span>Horários</span>
+    </button>
+</div>
+
+<script>
+
+// ===== NAVEGAÇÃO INÍCIO / CALENDÁRIO =====
+const btnInicio = document.getElementById('btnInicio');
+const btnCalendario = document.getElementById('btnCalendario');
+const btnHorario = document.getElementById('btnHorario');
+const paginaCalendario = document.getElementById('paginaCalendario');
+const paginaHorario = document.getElementById('paginaHorario');
+const mesAnterior = document.getElementById('mesAnterior');
+const mesProximo = document.getElementById('mesProximo');
+const mesAtual = document.getElementById('mesAtual');
+const diasCalendario = document.getElementById('diasCalendario');
+
+let dataCalendario = new Date();
+dataCalendario.setDate(1);
+
+const nomesMesesCalendario = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril',
+    'Maio', 'Junho', 'Julho', 'Agosto',
+    'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
+function gerarCalendario() {
+    const ano = dataCalendario.getFullYear();
+    const mes = dataCalendario.getMonth();
+
+    mesAtual.textContent = `${nomesMesesCalendario[mes]} ${ano}`;
+    diasCalendario.innerHTML = '';
+
+    const primeiroDia = new Date(ano, mes, 1).getDay();
+    const quantidadeDias = new Date(ano, mes + 1, 0).getDate();
+
+    const hoje = new Date();
+    const diaHoje = hoje.getDate();
+    const mesHoje = hoje.getMonth();
+    const anoHoje = hoje.getFullYear();
+
+    // As tarefas são lidas do mesmo array usado pela tela inicial.
+    const tarefasCalendario = Array.isArray(tarefas) ? tarefas : [];
+
+    for (let i = 0; i < primeiroDia; i++) {
+        const vazio = document.createElement('div');
+        vazio.className = 'dia-calendario dia-vazio';
+        diasCalendario.appendChild(vazio);
+    }
+
+    for (let dia = 1; dia <= quantidadeDias; dia++) {
+        const elemento = document.createElement('div');
+        elemento.className = 'dia-calendario';
+
+        const dataDia = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+        if (dia === diaHoje && mes === mesHoje && ano === anoHoje) {
+            elemento.classList.add('dia-hoje');
+        }
+
+        const numero = document.createElement('div');
+        numero.className = 'dia-numero';
+        numero.textContent = dia;
+        elemento.appendChild(numero);
+
+        const tarefasDoDia = tarefasCalendario.filter(t => t && t.data === dataDia);
+
+        const lista = document.createElement('div');
+        lista.className = 'tarefas-do-dia';
+
+        // Mostra até 3 tarefas no quadrinho. Se houver mais,
+        // aparece um indicador "+N ..."; ao tocar no dia, todas são mostradas.
+        const limiteVisivel = 3;
+
+        tarefasDoDia.slice(0, limiteVisivel).forEach(t => {
+            const tarefa = document.createElement('div');
+            const urgencia = t.urgencia || 'não-definida';
+
+            tarefa.className = `tarefa-calendario urg-${urgencia}`;
+
+            if (t.concluida) {
+                tarefa.classList.add('concluida-calendario');
+            }
+
+            tarefa.textContent = t.nome || 'Tarefa';
+            tarefa.title = t.nome || 'Tarefa';
+
+            lista.appendChild(tarefa);
+        });
+
+        if (tarefasDoDia.length > limiteVisivel) {
+            const restantes = tarefasDoDia.length - limiteVisivel;
+            const mais = document.createElement('div');
+
+            mais.className = 'tarefa-mais-calendario';
+            mais.textContent = `+${restantes} ...`;
+
+            lista.appendChild(mais);
+        }
+
+        elemento.appendChild(lista);
+
+        // Qualquer dia pode ser aberto para ver todas as tarefas.
+        elemento.addEventListener('click', () => {
+            abrirTarefasDoDia(dataDia);
+        });
+
+        diasCalendario.appendChild(elemento);
+    }
+}
+
+function abrirTarefasDoDia(dataDia) {
+    const modal = document.getElementById('modalDiaCalendario');
+    const titulo = document.getElementById('tituloDiaCalendario');
+    const lista = document.getElementById('listaDiaCalendario');
+
+    const dataFormatada = new Date(dataDia + 'T12:00:00')
+        .toLocaleDateString('pt-BR');
+
+    titulo.textContent = `Tarefas de ${dataFormatada}`;
+    lista.innerHTML = '';
+
+    const tarefasDoDia = (Array.isArray(tarefas) ? tarefas : [])
+        .filter(t => t && t.data === dataDia)
+        .sort((a, b) => {
+            const prioridade = {
+                alta: 1,
+                media: 2,
+                baixa: 3,
+                "": 4
+            };
+
+            const urgenciaA = prioridade[a.urgencia] || 4;
+            const urgenciaB = prioridade[b.urgencia] || 4;
+
+            if (urgenciaA !== urgenciaB) {
+                return urgenciaA - urgenciaB;
+            }
+
+            // Mantém as pendentes antes das concluídas.
+            if (a.concluida !== b.concluida) {
+                return a.concluida ? 1 : -1;
+            }
+
+            return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        });
+
+    if (tarefasDoDia.length === 0) {
+        lista.innerHTML = `
+            <div class="aviso-dia-calendario">
+                📅 Não há tarefas neste dia.
+            </div>
+        `;
+    } else {
+        tarefasDoDia.forEach(t => {
+            const indiceReal = tarefas.indexOf(t);
+            lista.insertAdjacentHTML('beforeend', criarHtml(t, indiceReal));
+        });
+    }
+
+    modal.classList.add('aberto');
+}
+
+function fecharTarefasDoDia() {
+    document.getElementById('modalDiaCalendario')
+        .classList.remove('aberto');
+}
+
+
+function limparModosNavegacao() {
+    document.body.classList.remove('modo-calendario', 'modo-horario');
+    btnInicio.classList.remove('ativo');
+    btnCalendario.classList.remove('ativo');
+    btnHorario.classList.remove('ativo');
+}
+
+function abrirInicio() {
+    limparModosNavegacao();
+    btnInicio.classList.add('ativo');
+}
+
+function abrirCalendario() {
+    limparModosNavegacao();
+    document.body.classList.add('modo-calendario');
+    btnCalendario.classList.add('ativo');
+    gerarCalendario();
+}
+
+function abrirHorario() {
+    limparModosNavegacao();
+    document.body.classList.add('modo-horario');
+    btnHorario.classList.add('ativo');
+    carregarFotoHorarioPagina();
+}
+
+btnInicio.addEventListener('click', abrirInicio);
+btnCalendario.addEventListener('click', abrirCalendario);
+btnHorario.addEventListener('click', abrirHorario);
+
+mesAnterior.addEventListener('click', () => {
+    dataCalendario.setMonth(dataCalendario.getMonth() - 1);
+    gerarCalendario();
+});
+
+mesProximo.addEventListener('click', () => {
+    dataCalendario.setMonth(dataCalendario.getMonth() + 1);
+    gerarCalendario();
+});
+
+document.getElementById('fecharDiaCalendario')
+    .addEventListener('click', fecharTarefasDoDia);
+
+document.getElementById('modalDiaCalendario')
+    .addEventListener('click', (event) => {
+        if (event.target.id === 'modalDiaCalendario') {
+            fecharTarefasDoDia();
+        }
+    });
+
+// Gera o calendário depois que o restante do HTML já foi carregado.
+window.addEventListener('DOMContentLoaded', () => {
+    if (typeof tarefas !== 'undefined') {
+        gerarCalendario();
+    }
+});
+
+
+const colorModal = document.getElementById("colorModal");
+const colorArea = document.getElementById("colorArea");
+const colorCursor = document.getElementById("colorCursor");
+const hueRange = document.getElementById("hueRange");
+
+const colorPreview = document.getElementById("colorPreview");
+const colorHex = document.getElementById("colorHex");
+
+const cancelColor = document.getElementById("cancelColor");
+const confirmColor = document.getElementById("confirmColor");
+
+let hue = 200;
+let saturation = 1;
+let value = 1;
+
+let selectedColor = "#00BFFF";
+
+let originalBackground = "";
+
+
+/* ================================= */
+/* ABRIR O SELETOR */
+/* ================================= */
+
+document.querySelector(".menu-cor").addEventListener("click", function () {
+
+    originalBackground = document.body.style.backgroundColor;
+
+    colorModal.classList.add("active");
+
+    atualizarCor();
+
+});
+
+
+/* ================================= */
+/* MOVER DENTRO DO QUADRADO */
+/* ================================= */
+
+function escolherNoQuadrado(event) {
+
+    const rect = colorArea.getBoundingClientRect();
+
+    let x = event.clientX - rect.left;
+    let y = event.clientY - rect.top;
+
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+
+    saturation = x / rect.width;
+    value = 1 - (y / rect.height);
+
+    colorCursor.style.left = (saturation * 100) + "%";
+    colorCursor.style.top = ((1 - value) * 100) + "%";
+
+    atualizarCor();
+}
+
+
+/* Clique */
+
+colorArea.addEventListener("pointerdown", function(event) {
+
+    escolherNoQuadrado(event);
+
+    function mover(e) {
+        escolherNoQuadrado(e);
+    }
+
+    function parar() {
+
+        document.removeEventListener(
+            "pointermove",
+            mover
+        );
+
+        document.removeEventListener(
+            "pointerup",
+            parar
+        );
+    }
+
+    document.addEventListener(
+        "pointermove",
+        mover
+    );
+
+    document.addEventListener(
+        "pointerup",
+        parar
+    );
+
+});
+
+
+/* ================================= */
+/* MUDAR TONALIDADE */
+/* ================================= */
+
+hueRange.addEventListener("input", function() {
+
+    hue = Number(this.value);
+
+    atualizarFundoQuadrado();
+
+    atualizarCor();
+
+});
+
+
+/* ================================= */
+/* ATUALIZAR O QUADRADO */
+/* ================================= */
+
+function atualizarFundoQuadrado() {
+
+    colorArea.style.background =
+        `
+        linear-gradient(
+            to bottom,
+            transparent 0%,
+            #000 100%
+        ),
+        linear-gradient(
+            to right,
+            #fff 0%,
+            hsl(${hue}, 100%, 50%) 100%
+        )
+        `;
+}
+
+
+/* ================================= */
+/* HSV → RGB */
+/* ================================= */
+
+function hsvParaRgb(h, s, v) {
+
+    let r, g, b;
+
+    let i = Math.floor(h / 60);
+
+    let f = h / 60 - i;
+
+    let p = v * (1 - s);
+
+    let q = v * (1 - f * s);
+
+    let t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+
+        case 0:
+            r = v;
+            g = t;
+            b = p;
+            break;
+
+        case 1:
+            r = q;
+            g = v;
+            b = p;
+            break;
+
+        case 2:
+            r = p;
+            g = v;
+            b = t;
+            break;
+
+        case 3:
+            r = p;
+            g = q;
+            b = v;
+            break;
+
+        case 4:
+            r = t;
+            g = p;
+            b = v;
+            break;
+
+        case 5:
+            r = v;
+            g = p;
+            b = q;
+            break;
+    }
+
+    return [
+        Math.round(r * 255),
+        Math.round(g * 255),
+        Math.round(b * 255)
+    ];
+}
+
+
+/* ================================= */
+/* RGB → HEX */
+/* ================================= */
+
+function rgbParaHex(r, g, b) {
+
+    return "#" +
+        [r, g, b]
+        .map(x => x.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+
+}
+
+
+/* ================================= */
+/* ATUALIZAR COR */
+/* ================================= */
+
+function atualizarCor() {
+
+    atualizarFundoQuadrado();
+
+    const rgb = hsvParaRgb(
+        hue,
+        saturation,
+        value
+    );
+
+    selectedColor = rgbParaHex(
+        rgb[0],
+        rgb[1],
+        rgb[2]
+    );
+
+    colorPreview.style.background =
+        selectedColor;
+
+    colorHex.textContent =
+        selectedColor;
+
+}
+
+
+/* ================================= */
+/* CONFIRMAR */
+/* ================================= */
+
+confirmColor.addEventListener("click", function() {
+
+    // Aplica a cor escolhida como fundo
+    document.body.style.background = selectedColor;
+
+    // Salva a cor para continuar depois de fechar/reabrir
+    localStorage.setItem(
+        "corFundoAgenda",
+        selectedColor
+    );
+
+    // Fecha a janela
+    colorModal.classList.remove("active");
+
+});
+
+
+/* ================================= */
+/* CANCELAR */
+/* ================================= */
+
+cancelColor.addEventListener("click", function() {
+
+    colorModal.classList.remove("active");
+
+});
+
+
+/* ================================= */
+/* CLICAR FORA DA JANELA */
+/* ================================= */
+
+colorModal.addEventListener("click", function(event) {
+
+    if (event.target === colorModal) {
+
+        colorModal.classList.remove("active");
+
+    }
+
+});
+
+
+/* ================================= */
+/* CARREGAR COR SALVA */
+/* ================================= */
+
+const corSalva =
+    localStorage.getItem("corFundoAgenda");
+
+if (corSalva) {
+    document.body.style.background = corSalva;
+}
+
+</script>
+
+    <script>
+        let tarefas = JSON.parse(localStorage.getItem('tarefasApp')) || [];
+        /* ==============================
+   MENU FLUTUANTE
+   ============================== */
+
+const botaoMenu = document.getElementById('botaoMenu');
+const modalMenu = document.getElementById('modalMenu');
+const btnFecharMenu = document.getElementById('btnFecharMenu');
+
+
+// =================================
+// TEMA CLARO / ESCURO
+// =================================
+
+const btnTema = document.getElementById('btnTema');
+
+// Carrega o tema salvo
+const temaSalvo = localStorage.getItem('temaAgenda');
+
+if (temaSalvo === 'escuro') {
+    document.body.classList.add('tema-escuro');
+}
+
+btnTema.addEventListener('click', () => {
+
+    document.body.classList.toggle('tema-escuro');
+
+    const estaEscuro =
+        document.body.classList.contains('tema-escuro');
+
+    localStorage.setItem(
+        'temaAgenda',
+        estaEscuro ? 'escuro' : 'claro'
+    );
+});
+// ==============================
+// EXPORTAR E IMPORTAR
+// ==============================
+
+const btnExportar = document.getElementById('btnExportar');
+const btnImportar = document.getElementById('btnImportar');
+const arquivoImportar = document.getElementById('arquivoImportar');
+
+
+// ==============================
+// EXPORTAR
+// ==============================
+
+btnExportar.addEventListener('click', () => {
+
+    // Pega a foto do horário salva
+    const fotoHorario = localStorage.getItem('fotoHorarioAulas') || null;
+
+    // Junta todos os dados da agenda
+    const dados = {
+        versao: 1,
+        tarefas: tarefas,
+        fotoHorario: fotoHorario
+    };
+
+    // Transforma os dados em JSON
+    const conteudo = JSON.stringify(dados, null, 2);
+
+    // Cria o arquivo
+    const arquivo = new Blob(
+        [conteudo],
+        { type: 'application/json' }
+    );
+
+    // Cria um endereço temporário para o arquivo
+    const url = URL.createObjectURL(arquivo);
+
+    // Cria o download
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'minhas-tarefas-backup.json';
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    // Libera a memória
+    URL.revokeObjectURL(url);
+
+    // Fecha o menu
+    modalMenu.classList.remove('aberto');
+
+    alert('✅ Dados exportados com sucesso!');
+});
+
+
+// ==============================
+// BOTÃO IMPORTAR
+// ==============================
+
+btnImportar.addEventListener('click', () => {
+
+    // Abre o seletor de arquivos
+    arquivoImportar.click();
+
+});
+
+
+// ==============================
+// LER ARQUIVO IMPORTADO
+// ==============================
+
+arquivoImportar.addEventListener('change', function(evento) {
+
+    const arquivo = evento.target.files[0];
+
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+
+    leitor.onload = function(e) {
+
+        try {
+
+            const dados = JSON.parse(e.target.result);
+
+            // Verifica se o arquivo é realmente um backup
+            if (
+                !dados ||
+                !Array.isArray(dados.tarefas)
+            ) {
+                throw new Error('Arquivo inválido');
+            }
+
+            // Confirma antes de substituir os dados atuais
+            const confirmar = confirm(
+                '⚠️ Importar este backup irá substituir as tarefas atuais.\\n\\nDeseja continuar?'
+            );
+
+            if (!confirmar) {
+                arquivoImportar.value = '';
+                return;
+            }
+
+            // Recupera as tarefas
+            tarefas = dados.tarefas;
+
+            // Salva as tarefas
+            salvar();
+
+            // Recupera a foto do horário
+            if (dados.fotoHorario) {
+
+                localStorage.setItem(
+                    'fotoHorarioAulas',
+                    dados.fotoHorario
+                );
+
+            } else {
+
+                localStorage.removeItem('fotoHorarioAulas');
+
+            }
+
+            // Atualiza a tela
+            atualizarTelas();
+
+            // Atualiza a foto
+            carregarFotoSalva();
+
+            // Fecha o menu
+            modalMenu.classList.remove('aberto');
+
+            alert('✅ Dados importados com sucesso!');
+
+        } catch (erro) {
+
+            alert(
+                '❌ Não foi possível importar este arquivo.\\n\\n' +
+                'Verifique se ele é um backup válido da Agenda de Tarefas.'
+            );
+
+            console.error(erro);
+
+        }
+
+        // Permite selecionar o mesmo arquivo novamente
+        arquivoImportar.value = '';
+
+    };
+
+    leitor.readAsText(arquivo);
+
+});
+botaoMenu.addEventListener('click', () => {
+    modalMenu.classList.add('aberto');
+});
+
+btnFecharMenu.addEventListener('click', () => {
+    modalMenu.classList.remove('aberto');
+});
+
+/* Fecha ao tocar fora da caixa branca */
+
+modalMenu.addEventListener('click', function(e) {
+    if (e.target === modalMenu) {
+        modalMenu.classList.remove('aberto');
+    }
+});
+
+        window.onload = () => {
+            atualizarTelas();
+            carregarFotoSalva();
+            carregarFotoHorarioPagina();
+        };
+
+        const botaoMais = document.getElementById('botaoMais');
+        const modalNovaTarefa = document.getElementById('modalNovaTarefa');
+        const btnFechar = document.getElementById('btnFechar');
+        let indiceEdicaoTarefa = null;
+
+        function prepararNovaTarefa() {
+            indiceEdicaoTarefa = null;
+            const titulo = modalNovaTarefa.querySelector('h2');
+            if (titulo) titulo.textContent = 'Nova Tarefa';
+            document.getElementById('btnSalvar').textContent = 'Salvar';
+            ['tipoTarefa','nomeMateria','urgenciaTarefa','dataTarefa','horaLembrete'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.value = '';
+            });
+        }
+
+        botaoMais.addEventListener('click', () => { prepararNovaTarefa(); modalNovaTarefa.classList.add('aberto'); });
+        btnFechar.addEventListener('click', () => { modalNovaTarefa.classList.remove('aberto'); prepararNovaTarefa(); });
+
+        const inputFoto = document.getElementById('escolherFoto');
+        const imgHorario = document.getElementById('fotoHorario');
+        const msgSemFoto = document.getElementById('mensagemSemFoto');
+        const botaoFoto = document.getElementById('botaoFoto');
+        const botaoApagarFoto = document.getElementById('botaoApagarFoto');
+
+        inputFoto.addEventListener('change', function(e) {
+            const arquivo = e.target.files[0];
+            if (!arquivo) return;
+
+            const leitor = new FileReader();
+            leitor.onload = function(evento) {
+                imgHorario.src = evento.target.result;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block';
+                localStorage.setItem('fotoHorarioAulas', evento.target.result);
+                carregarFotoHorarioPagina();
+            }
+            leitor.readAsDataURL(arquivo);
+        });
+
+        function carregarFotoSalva() {
+            const fotoSalva = localStorage.getItem('fotoHorarioAulas');
+            if (fotoSalva) {
+                imgHorario.src = fotoSalva;
+                imgHorario.style.display = 'block';
+                msgSemFoto.style.display = 'none';
+                botaoFoto.textContent = "📷 Trocar minha foto do horário";
+                botaoApagarFoto.style.display = 'block';
+            }
+            carregarFotoHorarioPagina();
+        }
+
+        function carregarFotoHorarioPagina() {
+            const foto = localStorage.getItem('fotoHorarioAulas');
+            const img = document.getElementById('fotoHorarioPagina');
+            const msg = document.getElementById('mensagemSemFotoPagina');
+            const btn = document.getElementById('botaoFotoPagina');
+            const apagar = document.getElementById('botaoApagarFotoPagina');
+
+            if (foto) {
+                img.src = foto;
+                img.style.display = 'block';
+                msg.style.display = 'none';
+                btn.textContent = '📷 Trocar minha foto do horário';
+                apagar.style.display = 'block';
+            } else {
+                img.src = '';
+                img.style.display = 'none';
+                msg.style.display = 'block';
+                btn.textContent = '📷 Selecionar minha foto do horário';
+                apagar.style.display = 'none';
+            }
+        }
+
+        document.getElementById('botaoFotoPagina').addEventListener('click', () => {
+            document.getElementById('escolherFoto').click();
+        });
+
+        document.getElementById('botaoApagarFotoPagina').addEventListener('click', apagarFoto);
+
+        function apagarFoto() {
+            if (confirm('Tem certeza que quer excluir a foto do horário?')) {
+                localStorage.removeItem('fotoHorarioAulas');
+                imgHorario.src = '';
+                imgHorario.style.display = 'none';
+                msgSemFoto.style.display = 'block';
+                botaoFoto.textContent = "📷 Selecionar minha foto do horário";
+                botaoApagarFoto.style.display = 'none';
+                inputFoto.value = '';
+                carregarFotoHorarioPagina();
+            }
+        }
+
+        document.getElementById('btnSalvar').addEventListener('click', function() {
+            const tipo = document.getElementById('tipoTarefa').value.trim();
+            const nome = document.getElementById('nomeMateria').value.trim();
+            const urgencia = document.getElementById('urgenciaTarefa').value.trim();
+            const data = document.getElementById('dataTarefa').value;
+            const hora = document.getElementById('horaLembrete').value.trim();
+            if (!nome || !data) return alert('Por favor, preencha o nome e a data da tarefa!');
+            if (indiceEdicaoTarefa !== null && tarefas[indiceEdicaoTarefa]) {
+                const atual = tarefas[indiceEdicaoTarefa];
+                tarefas[indiceEdicaoTarefa] = { ...atual, tipo, nome, urgencia, data, hora };
+            } else {
+                tarefas.push({ tipo, nome, urgencia, data, hora, concluida: false, dataConclusao: null, ordemConclusao: null });
+            }
+            salvar();
+            atualizarTelas();
+            modalNovaTarefa.classList.remove('aberto');
+            prepararNovaTarefa();
+        });
+
+        function mudarStatus(indice) {
+            const tarefa = tarefas[indice];
+            tarefa.concluida = !tarefa.concluida;
+
+            if (tarefa.concluida) {
+                tarefa.dataConclusao = new Date().toLocaleString('pt-BR');
+                tarefa.ordemConclusao = Date.now();
+            } else {
+                tarefa.dataConclusao = null;
+                tarefa.ordemConclusao = null;
+            }
+
+            salvar();
+            atualizarTelas();
+        }
+
+        function toggleConcluidas() {
+            document.getElementById('conteudoConcluidas').classList.toggle('aberto');
+            document.querySelector('.cabecalho-concluidas').classList.toggle('aberto');
+        }
+
+        function apagarTodasConcluidas() {
+            if (confirm('Apagar todas as tarefas concluídas?')) {
+                tarefas = tarefas.filter(t => !t.concluida);
+                salvar(); 
+                atualizarTelas();
+            }
+        }
+
+        let filtroAtual = 'todas';
+
+        function tarefaPassaFiltroPronto(t) {
+            const hoje = dataISOComOffset(0);
+            const amanha = dataISOComOffset(1);
+            if (filtroAtual === 'hoje') return t.data === hoje;
+            if (filtroAtual === 'amanha') return t.data === amanha;
+            if (filtroAtual === 'atrasadas') return !t.concluida && !!t.data && t.data < hoje;
+            if (filtroAtual === 'alta') return t.urgencia === 'alta';
+            if (filtroAtual === 'provas') return (t.tipo || '').toLowerCase().includes('prova');
+            if (filtroAtual === 'trabalhos') return (t.tipo || '').toLowerCase().includes('trabalho');
+            return true;
+        }
+
+        function atualizarTelas() {
+            const pendentes = tarefas
+    .filter(t => !t.concluida)
+    .sort((a, b) => {
+
+        // Ordem de prioridade da urgência
+        const prioridade = {
+            alta: 1,
+            media: 2,
+            baixa: 3,
+            "": 4
+        };
+
+        const urgenciaA = prioridade[a.urgencia] || 4;
+        const urgenciaB = prioridade[b.urgencia] || 4;
+
+        // Primeiro: urgência
+        if (urgenciaA !== urgenciaB) {
+            return urgenciaA - urgenciaB;
+        }
+
+        // Depois: data
+        const dataA = a.data || '9999-12-31';
+        const dataB = b.data || '9999-12-31';
+        if (dataA !== dataB) {
+            return dataA.localeCompare(dataB);
+        }
+
+        // Por último: hora. Tarefas sem horário ficam depois das que têm horário.
+        const horaA = a.hora || '99:99';
+        const horaB = b.hora || '99:99';
+        return horaA.localeCompare(horaB);
+    });
+            const concluidas = tarefas.filter(t => t.concluida).sort((a, b) => b.ordemConclusao - a.ordemConclusao);
+
+            const termoBusca = (document.getElementById('buscaPrincipal')?.value || document.getElementById('buscarTarefa')?.value || '').trim().toLowerCase();
+            const passaBusca = t => !termoBusca || [t.nome, t.tipo, t.urgencia, t.data, t.hora].some(v => String(v || '').toLowerCase().includes(termoBusca));
+            const passaBuscaEFiltro = t => passaBusca(t) && tarefaPassaFiltroPronto(t);
+            const pendentesVisiveis = pendentes.filter(passaBuscaEFiltro);
+            const concluidasVisiveis = concluidas.filter(passaBuscaEFiltro);
+
+            document.getElementById('numPend').textContent = pendentes.length;
+            document.getElementById('numConc').textContent = concluidas.length;
+            const total = tarefas.length;
+            const porcentagem = total > 0 ? Math.round((concluidas.length / total)*100) : 0;
+            document.getElementById('numPorc').textContent = porcentagem + '%';
+
+            const listaPendEl = document.getElementById('listaPendentes');
+            listaPendEl.innerHTML = '';
+            if (pendentesVisiveis.length === 0) {
+                listaPendEl.innerHTML = `<div class="vazio">${termoBusca ? 'Nenhuma tarefa encontrada 🔎' : 'Nenhuma tarefa pendente 😊'}</div>`;
+            } else {
+                pendentesVisiveis.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaPendEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
+
+            const listaConcEl = document.getElementById('listaConcluidas');
+            listaConcEl.innerHTML = '';
+            if (concluidasVisiveis.length === 0) {
+                listaConcEl.innerHTML = `<div class="vazio">${termoBusca ? 'Nenhuma tarefa concluída encontrada' : 'Nenhuma tarefa concluída ainda'}</div>`;
+            } else {
+                concluidasVisiveis.forEach(t => {
+                    const indiceReal = tarefas.indexOf(t);
+                    listaConcEl.innerHTML += criarHtml(t, indiceReal);
+                });
+            }
+            atualizarAvisoProximoDia();
+        }
+
+       function criarHtml(t, ind) {
+    let extra = '';
+
+    if (t.concluida) {
+        extra = `<div class="data-conclusao">✅ Concluída em: ${t.dataConclusao}</div>`;
+    }
+
+    // Verifica se está atrasada PRIMEIRO
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const dataEntrega = new Date(t.data + 'T12:00:00');
+
+    const atrasada = !t.concluida && dataEntrega < hoje;
+
+
+    // AGORA pode usar "atrasada"
+    let linhaTipo = t.tipo
+        ? `<div class="tipo">${t.tipo}${atrasada ? ' <span class="tarefa-atrasada">🔴 Atrasada</span>' : ''}</div>`
+        : `<div class="tipo sem-tipo">Não definido${atrasada ? ' <span class="tarefa-atrasada">🔴 Atrasada</span>' : ''}</div>`;
+
+
+    let textoHora = t.hora
+        ? `🕒 Horário: ${t.hora}`
+        : `<span class="hora-vazia">🕒 Horário: Não definido</span>`;
+
+
+    let classeUrgencia = t.urgencia
+        ? `urg-${t.urgencia}`
+        : 'urg-não-definida';
+
+
+    return `
+        <div class="tarefa ${classeUrgencia} ${t.concluida?'concluida':''}">
+            <input type="checkbox" ${t.concluida?'checked':''} onchange="mudarStatus(${ind})">
+
+            <div class="info">
+                ${linhaTipo}
+                <div class="nome">${t.nome}</div>
+                <div class="data">
+                    📅 Dia da entrega:
+                    ${new Date(t.data+'T12:00:00').toLocaleDateString('pt-BR')}
+                </div>
+
+                <div class="hora-lembrete">${textoHora}</div>
+
+                ${extra}
+                <div class="acoes-tarefa">
+                    <button type="button" onclick="editarTarefa(${ind})">✏️ Editar</button>
+                    <button type="button" onclick="duplicarTarefa(${ind})">📄 Duplicar</button>
+                    <button type="button" class="perigo" onclick="excluirTarefa(${ind})">🗑️ Excluir</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+
+        function editarTarefa(indice) {
+            const t = tarefas[indice];
+            if (!t) return;
+            indiceEdicaoTarefa = indice;
+            document.getElementById('tipoTarefa').value = t.tipo || '';
+            document.getElementById('nomeMateria').value = t.nome || '';
+            document.getElementById('urgenciaTarefa').value = t.urgencia || '';
+            document.getElementById('dataTarefa').value = t.data || '';
+            document.getElementById('horaLembrete').value = t.hora || '';
+            const titulo = modalNovaTarefa.querySelector('h2');
+            if (titulo) titulo.textContent = 'Editar Tarefa';
+            document.getElementById('btnSalvar').textContent = 'Salvar alterações';
+            modalNovaTarefa.classList.add('aberto');
+        }
+
+        function duplicarTarefa(indice) {
+            const t = tarefas[indice];
+            if (!t) return;
+            const copia = JSON.parse(JSON.stringify(t));
+            copia.nome = (copia.nome || 'Tarefa') + ' (cópia)';
+            copia.concluida = false;
+            copia.dataConclusao = null;
+            copia.ordemConclusao = null;
+            tarefas.push(copia);
+            salvar();
+            atualizarTelas();
+        }
+
+        function excluirTarefa(indice) {
+            const t = tarefas[indice];
+            if (!t) return;
+            if (!confirm(`Excluir "${t.nome}"?`)) return;
+            tarefas.splice(indice, 1);
+            salvar();
+            atualizarTelas();
+        }
+
+        function dataISOComOffset(dias) {
+            const d = new Date();
+            d.setDate(d.getDate() + dias);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function atualizarAvisoProximoDia() {
+            const resumo = document.getElementById('resumoProximoDia');
+            const lista = document.getElementById('listaProximoDia');
+            if (!resumo || !lista) return;
+            const amanha = dataISOComOffset(1);
+            const tarefasAmanha = tarefas.filter(t => !t.concluida && t.data === amanha).sort((a,b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'));
+            if (!tarefasAmanha.length) {
+                resumo.textContent = 'Você não tem tarefas pendentes para amanhã.';
+                lista.innerHTML = '';
+                return;
+            }
+            resumo.textContent = `Você tem ${tarefasAmanha.length} ${tarefasAmanha.length === 1 ? 'tarefa' : 'tarefas'} para amanhã.`;
+            lista.innerHTML = tarefasAmanha.slice(0, 4).map(t => `<div class="item-proximo-dia"><strong>${t.hora ? t.hora + ' · ' : ''}${t.nome}</strong>${t.tipo || 'Tarefa'}</div>`).join('') + (tarefasAmanha.length > 4 ? `<div class="item-proximo-dia">+${tarefasAmanha.length - 4} outra${tarefasAmanha.length - 4 === 1 ? '' : 's'} tarefa${tarefasAmanha.length - 4 === 1 ? '' : 's'}</div>` : '');
+        }
+
+        function sincronizarBusca(valor, origem) {
+            const outro = origem === 'buscaPrincipal' ? document.getElementById('buscarTarefa') : document.getElementById('buscaPrincipal');
+            if (outro && outro.value !== valor) outro.value = valor;
+            atualizarTelas();
+        }
+
+        document.querySelectorAll('.chip-filtro').forEach(botao => {
+            botao.addEventListener('click', () => {
+                document.querySelectorAll('.chip-filtro').forEach(item => item.classList.remove('ativo'));
+                botao.classList.add('ativo');
+                filtroAtual = botao.dataset.filtro || 'todas';
+                atualizarTelas();
+            });
+        });
+
+        document.getElementById('buscaPrincipal')?.addEventListener('input', e => sincronizarBusca(e.target.value, 'buscaPrincipal'));
+        document.getElementById('buscarTarefa')?.addEventListener('input', e => sincronizarBusca(e.target.value, 'buscarTarefa'));
+
+        function salvar() {
+            localStorage.setItem('tarefasApp', JSON.stringify(tarefas));
+            if (typeof gerarCalendario === 'function') {
+                gerarCalendario();
+            }
+        }
+// ===== POMODORO =====
+
+let intervalo;
+let tempoRestanteSegundos = 25 * 60;
+let modoTrabalho = true;
+
+const btnAbrirPomodoro = document.getElementById('abrirPomodoro');
+const cardPomodoro = document.getElementById('cardPomodoro');
+
+const btnInfo = document.getElementById('btnInfo');
+const instrucaoPomodoro = document.getElementById('instrucaoPomodoro');
+
+const cronometro = document.getElementById('cronometro');
+
+const btnIniciar = document.getElementById('btnIniciar');
+const btnPausar = document.getElementById('btnPausar');
+const btnContinuar = document.getElementById('btnContinuar');
+const btnZerar = document.getElementById('btnZerar');
+
+
+// ===== ABRIR / FECHAR POMODORO =====
+btnAbrirPomodoro.addEventListener('click', () => {
+
+    if (cardPomodoro.style.display === 'block') {
+
+        // Já está aberto → fecha
+        cardPomodoro.style.display = 'none';
+        modalMenu.classList.remove('aberto');
+
+        btnAbrirPomodoro.innerHTML = '⏱️ Pomodoro';
+
+    } else {
+
+        // Está fechado → abre
+        cardPomodoro.style.display = 'block';
+        modalMenu.classList.remove('aberto');
+
+        btnAbrirPomodoro.innerHTML = '⏱️ Fechar Pomodoro';
+
+        // Volta para o início da página
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+
+});
+
+// ===== ABRIR / FECHAR INFORMAÇÕES =====
+btnInfo.addEventListener('click', () => {
+
+    instrucaoPomodoro.classList.toggle('aberto');
+    btnInfo.classList.toggle('aberto');
+
+});
+
+// Atualizar relógio
+function atualizarCronometro() {
+
+    const minutos = Math.floor(tempoRestanteSegundos / 60);
+    const segundos = tempoRestanteSegundos % 60;
+
+    cronometro.textContent =
+        String(minutos).padStart(2, '0') +
+        ':' +
+        String(segundos).padStart(2, '0');
+}
+
+
+// Alterna automaticamente entre foco (25 min) e descanso (5 min)
+function finalizarEtapaPomodoro() {
+    clearInterval(intervalo);
+
+    if (modoTrabalho) {
+        modoTrabalho = false;
+        tempoRestanteSegundos = 5 * 60;
+        atualizarCronometro();
+        alert('🧘 Tempo de foco concluído! Agora descanse por 5 minutos.');
+    } else {
+        modoTrabalho = true;
+        tempoRestanteSegundos = 25 * 60;
+        atualizarCronometro();
+        alert('✅ Descanso concluído! Quando estiver pronto, comece mais 25 minutos de foco.');
+    }
+
+    btnIniciar.style.display = 'inline-block';
+    btnPausar.style.display = 'none';
+    btnContinuar.style.display = 'none';
+}
+
+
+// Iniciar
+btnIniciar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    intervalo = setInterval(() => {
+
+        if (tempoRestanteSegundos <= 0) {
+            finalizarEtapaPomodoro();
+            return;
+        }
+
+        tempoRestanteSegundos--;
+
+        atualizarCronometro();
+
+    }, 1000);
+
+    btnIniciar.style.display = 'none';
+    btnPausar.style.display = 'inline-block';
+    btnContinuar.style.display = 'none';
+
+});
+
+
+// Pausar
+btnPausar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    btnPausar.style.display = 'none';
+    btnContinuar.style.display = 'inline-block';
+
+});
+
+
+// Continuar
+btnContinuar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    intervalo = setInterval(() => {
+
+        if (tempoRestanteSegundos <= 0) {
+            finalizarEtapaPomodoro();
+            return;
+        }
+
+        tempoRestanteSegundos--;
+
+        atualizarCronometro();
+
+    }, 1000);
+
+    btnContinuar.style.display = 'none';
+    btnPausar.style.display = 'inline-block';
+
+});
+
+
+// Zerar
+btnZerar.addEventListener('click', () => {
+
+    clearInterval(intervalo);
+
+    modoTrabalho = true;
+    tempoRestanteSegundos = 25 * 60;
+
+    atualizarCronometro();
+
+    btnIniciar.style.display = 'inline-block';
+    btnPausar.style.display = 'none';
+    btnContinuar.style.display = 'none';
+
+});
+    
+
+// ===== CONTROLES DO HORÁRIO NA PÁGINA DEDICADA =====
+const inputFotoHorario = document.getElementById('escolherFoto');
+const imgHorarioPagina = document.getElementById('fotoHorario');
+const msgSemFotoPagina = document.getElementById('mensagemSemFoto');
+const botaoFotoPagina = document.getElementById('botaoFoto');
+const botaoApagarFotoPagina = document.getElementById('botaoApagarFoto');
+
+function atualizarFotoHorarioPagina() {
+    if (!imgHorarioPagina) return;
+
+    const fotoSalva = localStorage.getItem('fotoHorarioAulas');
+
+    if (fotoSalva) {
+        imgHorarioPagina.src = fotoSalva;
+        imgHorarioPagina.style.display = 'block';
+        if (msgSemFotoPagina) msgSemFotoPagina.style.display = 'none';
+        if (botaoFotoPagina) botaoFotoPagina.textContent = '📷 Trocar minha foto do horário';
+        if (botaoApagarFotoPagina) botaoApagarFotoPagina.style.display = 'block';
+    } else {
+        imgHorarioPagina.src = '';
+        imgHorarioPagina.style.display = 'none';
+        if (msgSemFotoPagina) msgSemFotoPagina.style.display = 'block';
+        if (botaoFotoPagina) botaoFotoPagina.textContent = '📷 Selecionar minha foto do horário';
+        if (botaoApagarFotoPagina) botaoApagarFotoPagina.style.display = 'block';
+        if (botaoApagarFotoPagina) botaoApagarFotoPagina.style.display = 'none';
+    }
+}
+
+if (botaoFotoPagina && inputFotoHorario) {
+    botaoFotoPagina.addEventListener('click', () => {
+        inputFotoHorario.click();
+    });
+
+    inputFotoHorario.addEventListener('change', (event) => {
+        const arquivo = event.target.files && event.target.files[0];
+        if (!arquivo) return;
+
+        const leitor = new FileReader();
+
+        leitor.onload = (evento) => {
+            const resultado = evento.target.result;
+
+            imgHorarioPagina.src = resultado;
+            imgHorarioPagina.style.display = 'block';
+
+            if (msgSemFotoPagina) {
+                msgSemFotoPagina.style.display = 'none';
+            }
+
+            botaoFotoPagina.textContent = '📷 Trocar minha foto do horário';
+
+            if (botaoApagarFotoPagina) {
+                botaoApagarFotoPagina.style.display = 'block';
+            }
+
+            localStorage.setItem('fotoHorarioAulas', resultado);
+        };
+
+        leitor.readAsDataURL(arquivo);
+    });
+}
+
+if (botaoApagarFotoPagina) {
+    botaoApagarFotoPagina.addEventListener('click', () => {
+        if (!confirm('Tem certeza que quer excluir a foto do horário?')) return;
+
+        localStorage.removeItem('fotoHorarioAulas');
+
+        if (inputFotoHorario) inputFotoHorario.value = '';
+
+        atualizarFotoHorarioPagina();
+    });
+}
+
+atualizarFotoHorarioPagina();
+
+ if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .catch(error => console.error('Erro ao registrar Service Worker:', error));
+    });
+}
+
+</script>
+</body>
+</html>
