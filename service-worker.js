@@ -1,10 +1,10 @@
-const CACHE_NAME = 'agenda-tarefas-v1';
+const CACHE_NAME = 'agenda-tarefas-v2';
 
 const ARQUIVOS = [
     './',
     './index.html',
     './manifest.json',
-    './ícone.png'
+    './icone.png'
 ];
 
 
