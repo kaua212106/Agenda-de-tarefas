@@ -1,57 +1,79 @@
-const CACHE_NAME = 'agenda-tarefas-v2';
+const CACHE_NAME = 'agenda-tarefas-cache';
 
-const ARQUIVOS = [
+const ARQUIVOS_OFFLINE = [
     './',
     './index.html',
     './manifest.json',
     './icone.png'
 ];
 
-
-// Instala o Service Worker
+// Instala e salva os arquivos essenciais
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => {
-                return cache.addAll(ARQUIVOS);
-            })
+            .then(cache => cache.addAll(ARQUIVOS_OFFLINE))
+            .then(() => self.skipWaiting())
     );
-
-    self.skipWaiting();
 });
 
-
-// Ativa o Service Worker
+// Assume o controle imediatamente
 self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(nomes => {
-            return Promise.all(
-                nomes
-                    .filter(nome => nome !== CACHE_NAME)
-                    .map(nome => caches.delete(nome))
-            );
-        })
-    );
-
-    self.clients.claim();
+    event.waitUntil(self.clients.claim());
 });
 
-
-// Quando o app pedir um arquivo
+// Internet primeiro.
+// Se estiver offline, usa o que foi salvo no cache.
 self.addEventListener('fetch', event => {
 
+    // Para páginas HTML
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    const copia = response.clone();
+
+                    caches.open(CACHE_NAME)
+                        .then(cache => cache.put('./index.html', copia));
+
+                    return response;
+                })
+                .catch(() =>
+                    caches.match('./index.html')
+                )
+        );
+
+        return;
+    }
+
+    // Para os outros arquivos
     event.respondWith(
         caches.match(event.request)
-            .then(resposta => {
+            .then(cache => {
 
-                // Se estiver salvo no aparelho, usa a cópia offline
-                if (resposta) {
-                    return resposta;
+                if (cache) {
+                    return cache;
                 }
 
-                // Se não estiver salvo, tenta buscar pela internet
-                return fetch(event.request);
+                return fetch(event.request)
+                    .then(response => {
+
+                        if (
+                            !response ||
+                            response.status !== 200 ||
+                            response.type === 'opaque'
+                        ) {
+                            return response;
+                        }
+
+                        const copia = response.clone();
+
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, copia);
+                            });
+
+                        return response;
+                    });
             })
     );
-
-});
+});2
