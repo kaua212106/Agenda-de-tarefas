@@ -2,7 +2,9 @@
   "use strict";
 
   const FIREBASE_SDK_VERSION = "12.17.1";
+  const CENTRAL_APP_NAME = "central-access";
   const DEVICE_KEY = "central-device-id-v1";
+
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyA8zLyzYwRv3qDIw-8H4_Tesy8iiH1haaA",
     authDomain: "central-de-apps.firebaseapp.com",
@@ -13,8 +15,6 @@
     measurementId: "G-44P6G2ZSE3"
   };
 
-  // Depois de ativar o App Check, coloque aqui a MESMA chave pública
-  // reCAPTCHA Enterprise usada pela Central.
   const APP_CHECK_SITE_KEY = "";
 
   document.documentElement.classList.add("central-direct-guard");
@@ -66,25 +66,31 @@
           <div style="font-size:38px">🔐</div>
           <h2>${title}</h2>
           <p>${text}</p>
-          <button id="centralDirectBack">Voltar</button>
+          <button id="centralDirectBack">Abrir Central</button>
         </div>
       </div>`;
+
     document.getElementById("centralDirectBack").onclick=()=>{
-      if(history.length>1)history.back();
-      else location.reload()
+      location.href="https://kaua212106.github.io/Central-de-apps/";
     };
   }
 
   async function start(){
     try{
       const v=FIREBASE_SDK_VERSION;
+
       const [appM,authM,fsM]=await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${v}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${v}/firebase-auth.js`),
         import(`https://www.gstatic.com/firebasejs/${v}/firebase-firestore.js`)
       ]);
 
-      const app=appM.initializeApp(FIREBASE_CONFIG, "direct-guard-"+Math.random().toString(36).slice(2));
+      let app;
+      try{
+        app=appM.getApp(CENTRAL_APP_NAME);
+      }catch{
+        app=appM.initializeApp(FIREBASE_CONFIG,CENTRAL_APP_NAME);
+      }
 
       if(APP_CHECK_SITE_KEY){
         try{
@@ -93,55 +99,89 @@
             provider:new ac.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
             isTokenAutoRefreshEnabled:true
           });
-        }catch(err){console.warn("App Check guard:",err)}
+        }catch(err){
+          console.warn("App Check guard:",err)
+        }
       }
 
       const auth=authM.getAuth(app);
       const db=fsM.getFirestore(app);
+
       await authM.setPersistence(auth,authM.browserLocalPersistence);
 
       authM.onAuthStateChanged(auth,async user=>{
-        if(!user){
-          deny("Acesso pela Central","Faça login e obtenha aprovação na Central antes de abrir este aplicativo.");
-          return
-        }
+        try{
+          if(!user){
+            deny(
+              "Acesso pela Central",
+              "Entre na Central com sua conta autorizada antes de abrir este aplicativo."
+            );
+            return
+          }
 
-        await authM.reload(user);
-        if(!user.emailVerified){
-          deny("E-mail não verificado","Confirme seu e-mail na Central antes de usar este aplicativo.");
-          return
-        }
-        await user.getIdToken(true);
+          await user.getIdToken(true);
 
-        const userSnap=await fsM.getDoc(fsM.doc(db,"usuarios",user.uid));
-        if(!userSnap.exists()||userSnap.data().ativo!==true||userSnap.data().bloqueado===true){
-          deny("Acesso não autorizado","Sua conta não possui autorização ativa para usar os aplicativos.");
-          return
-        }
+          const userSnap=await fsM.getDoc(
+            fsM.doc(db,"usuarios",user.uid)
+          );
 
-        const token=await user.getIdTokenResult(true);
-        if(token.claims?.admin===true){
+          if(
+            !userSnap.exists() ||
+            userSnap.data().ativo!==true ||
+            userSnap.data().bloqueado===true
+          ){
+            deny(
+              "Acesso não autorizado",
+              "Sua conta não possui autorização ativa para usar os aplicativos."
+            );
+            return
+          }
+
+          const token=await user.getIdTokenResult(true);
+
+          if(token.claims?.admin===true){
+            allow();
+            return
+          }
+
+          const devSnap=await fsM.getDoc(
+            fsM.doc(db,"usuarios",user.uid,"dispositivos",deviceId())
+          );
+
+          if(
+            !devSnap.exists() ||
+            devSnap.data().ativo!==true ||
+            devSnap.data().bloqueado===true
+          ){
+            deny(
+              "Dispositivo não autorizado",
+              "Este aparelho precisa ser aprovado na Central antes de abrir o aplicativo."
+            );
+            return
+          }
+
           allow();
-          return
+        }catch(err){
+          console.error("Verificação de acesso:",err);
+          deny(
+            "Não foi possível verificar o acesso",
+            "Abra a Central novamente e tente acessar o aplicativo por ela."
+          );
         }
-
-        const devSnap=await fsM.getDoc(fsM.doc(db,"usuarios",user.uid,"dispositivos",deviceId()));
-        if(!devSnap.exists()||devSnap.data().ativo!==true||devSnap.data().bloqueado===true){
-          deny("Dispositivo não autorizado","Este aparelho precisa ser aprovado na Central antes de abrir o aplicativo.");
-          return
-        }
-
-        allow()
       });
+
     }catch(err){
       console.error("Central Direct Guard:",err);
-      deny("Não foi possível verificar o acesso","A verificação de segurança falhou. Tente abrir novamente pela Central.")
+      deny(
+        "Não foi possível verificar o acesso",
+        "A verificação de segurança falhou. Abra novamente pela Central."
+      );
     }
   }
 
   if(document.readyState==="loading"){
-    document.addEventListener("DOMContentLoaded",start,{once:true})
+    document.addEventListener("DOMContentLoaded",start,{once:true});
   }else{
-    start()
+    start();
   }
 })();
