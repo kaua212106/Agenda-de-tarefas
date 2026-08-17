@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agenda-tarefas-cache';
+const CACHE_NAME = 'agenda-tarefas-cache V1';
 
 const ARQUIVOS_OFFLINE = [
     './',
