@@ -4,7 +4,8 @@ const ARQUIVOS_OFFLINE = [
     './',
     './index.html',
     './manifest.json',
-    './icone.png'
+    './icone.png',
+    './auth-guard-v3.js'
 ];
 
 // Instala e salva os arquivos essenciais
